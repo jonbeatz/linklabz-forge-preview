@@ -4,7 +4,7 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "linklabz-forge-v1";
+  const STORAGE_KEY = "linklabz-forge-v1.2";
   const UNDO_MS = 7000;
   const PROJECTS_BASE = [
     "Website-Templates",
