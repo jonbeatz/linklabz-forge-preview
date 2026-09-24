@@ -11,7 +11,7 @@
 
 **🚀 Live preview:** https://jonbeatz.github.io/linklabz-forge-preview/
 
-![LinkLabz Forge preview](assets/screenshot.png)
+![LinkLabz Forge preview](assets/screenshot.png?v=2)
 
 ## What's inside
 
@@ -60,7 +60,7 @@ Same house pattern as the Trinity preview:
 
 1. Title + one-line description of whose build it is and what changed.
 2. Badge row: Pages deploy status, last commit, repo size, site type.
-3. Live preview link, then a real screenshot (`assets/screenshot.png`).
+3. Live preview link, then a real screenshot (`assets/screenshot.png?v=2`).
 4. "What's inside" — the feature list in plain language.
 5. "Tech stack" — the table above; keep it honest and short.
 6. "Project structure" — the tree, so the next person knows where things live.

@@ -131,3 +131,9 @@ Not a Muse clone — amber forge identity. Trinity Muse = master board until Jon
 ### 2026-09-23 — initial Forge blueprint
 - Created `docs/CURSOR-BLUEPRINT.md` on branch `bridge-status-and-cursor-blueprint` in response to Trinity NEED-ACK (mirror request while her `docs/CURSOR-BLUEPRINT.md` on `gradient-lab-upgrade` is not yet in-tree).
 - Captures current Forge app map, `linklabz-forge-v1.2` persistence, seed counts (19/7/8/7), real-vs-stubbed, Cursor wiring checklist (aligned with her 10 must-fixes + Forge gaps), design tokens, branch workflow.
+
+### 2026-09-24 — FINAL-MASTER harvest lock (Ravyn ACK)
+- Rebuild IN set locked with Trinity: (1) shared LinkLabz logo/brand pack (2) facet filter bar + rectangular chips + counts + Promoted/Favorites + 36–44px targets (3) searchable project combobox + chips + pinning (4) card overflow: Favorite / Promote / Set lane / Open / Copy link (5) drag-reorder to-dos + keyboard fallback (6) workspace menu Download/Load/Reset/Clear filters (7) live stat pills (8) phone bottom tab bar (9) Card Swap under Tools + mega menu + search ONLY — not island, not top bar.
+- CUT / archive-only: gold foil cards; Coast/Band/Cover as defaults; gold top-bar Card Swap button; lab-toggle chrome; redundant glass/goo/monograms.
+- Master DATA for Cursor rebuild = Trinity Muse board; Trinity Pages = reference BUILD; Forge = challenger reference for her five + phone tab bar.
+- Data preservation: all reviews/bookmarks/spitballs/to-dos/favorites must survive import; Promoted/Favorites/queue order must become persistent in Cursor rebuild (not session-only).
