@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260924f" />
+  <link rel="stylesheet" href="styles.css?v=20260924g" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -78,6 +78,8 @@
         <button type="button" data-layout="grid" title="Dense compare grid">Bento</button>
         <button type="button" data-layout="cover" title="Browse lens (Try / Promoted / Favorites)">Cover</button>
       </div>
+
+      <button type="button" class="swap-jump" id="btn-card-swap" title="Card Swap — Tools stack, not a board mode">Card Swap</button>
 
       <div class="island-tools">
         <button type="button" class="chip" id="btn-filters" aria-expanded="false" aria-controls="island-filters">Filters</button>
@@ -221,8 +223,8 @@
           <p class="help-use">Type <code>lane:try</code> or <code>project:reWavz</code> without hunting filter chips; run “Toggle layout → Bento” from the palette mid-flow. <span class="help-tip">Tip: Session · Dirty means Download before a risky Load/Reset. Help lives on the island — tap <code>?</code>, don’t look for a side panel.</span></p>
         </div>
         <div class="help-surface">
-          <p><strong>Tools Spotlight</strong> — Manual spotlight of up to three tools — Card Swap UI lives here only, not on the main board.</p>
-          <p class="help-use">Pin RoboSync, UVR GUI, and Noizefield for a “this week’s trial stack” strip on the Tools shelf. <span class="help-tip">Tip: Max 3, manual curation. Never auto-rotate the main Lanes board into Card Swap.</span></p>
+          <p><strong>Card Swap</strong> — Manual stack of up to three Try It reviews. Lives on Tools only, not on the main board. The island Card Swap button jumps here.</p>
+          <p class="help-use">Open RoboSync, UVR GUI, and Noizefield as a “this week’s trial stack” on the Tools shelf. <span class="help-tip">Tip: Max 3, arrows only. Never auto-rotate the main Lanes board into Card Swap.</span></p>
         </div>
 
         <h3>Keyboard &amp; controls</h3>
@@ -234,6 +236,7 @@
           <li><span>Search operators (board)</span><span><code>lane:</code> <code>project:</code> <code>hardware:</code> <code>found:</code> <code>action:</code></span></li>
           <li><span>Examples</span><span><code>lane:try</code> · <code>project:reWavz</code> · <code>hardware:rtx</code></span></li>
           <li><span>Layout toggle</span><span>Lanes | Bento | Cover</span></li>
+          <li><span>Card Swap</span><span>Island button · scrolls the Tools stack</span></li>
           <li><span>Cover Browse</span><span><kbd>←</kbd> <kbd>→</kbd> when Cover lens is active</span></li>
           <li><span>To-do capture (palette)</span><span><code>todo …</code> or <code>t …</code> then Enter</span></li>
           <li><span>Workspace</span><span>Download / Load on the island · Reset to seed under ⋯</span></li>
@@ -242,7 +245,7 @@
         <h3>What’s experimental</h3>
         <ul class="help-list">
           <li><strong>Cover Browse</strong> — optional Try / Promoted / Favorites lens; same drawer; no floor reflection.</li>
-          <li><strong>Tools Spotlight (Card Swap)</strong> — max 3 manual pins on Tools only. Not the main board.</li>
+          <li><strong>Card Swap</strong> — max 3 manual cards on Tools only. Not a board mode.</li>
           <li><strong>Load workspace</strong> — replaces the current board (no merge/upsert yet). Download first.</li>
           <li><strong>Master Muse</strong> — Trinity’s board remains source of truth until Jon says otherwise. Forge is the amber Pages challenger.</li>
         </ul>
@@ -262,6 +265,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260924f"></script>
+  <script src="app.js?v=20260924g"></script>
 </body>
 </html>

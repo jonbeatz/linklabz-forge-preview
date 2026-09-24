@@ -440,6 +440,7 @@
       document.querySelector(".island-overflow"),
       document.getElementById("nav"),
       document.getElementById("board-layout"),
+      document.getElementById("btn-card-swap"),
       document.getElementById("board-surface"),
       document.getElementById("stats-strip"),
       document.getElementById("island-filters"),
@@ -742,6 +743,10 @@
           syncFilterChrome(); ui.view = "board"; render();
           toast("Layout → Cover");
         } },
+      { id: "qa-card-swap",
+        label: "Card Swap",
+        icon: "⇄", keys: "card swap spotlight tools stack",
+        run: () => jumpToCardSwap() },
     ];
     for (const a of actions) {
       if (match(a.label) || match(a.keys)) {
@@ -941,6 +946,8 @@
       });
     });
 
+    document.getElementById("btn-card-swap").addEventListener("click", jumpToCardSwap);
+
     document.getElementById("project-strip").addEventListener("click", (e) => {
       const chip = e.target.closest("[data-project]");
       if (!chip) return;
@@ -1081,6 +1088,11 @@
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
     const boardLayout = document.getElementById("board-layout");
     if (boardLayout) boardLayout.classList.toggle("hidden", !showBoardChrome);
+    const swapJump = document.getElementById("btn-card-swap");
+    if (swapJump) {
+      if (ui.view === "tools") swapJump.setAttribute("aria-current", "location");
+      else swapJump.removeAttribute("aria-current");
+    }
     const filtersActive = !!(ui.filterLane || ui.filterCategory || ui.filterPromoted || ui.filterFavorites || ui.filterProject);
     const showFilterPanel = (ui.filtersOpen || filtersActive) && (showBoardChrome || ui.view === "favorites");
     document.getElementById("island").classList.toggle("filters-open", showFilterPanel);
@@ -1227,6 +1239,21 @@
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
+  function jumpToCardSwap() {
+    ui.view = "tools";
+    closeDrawer();
+    render();
+    const reduce = prefersReducedMotion();
+    requestAnimationFrame(() => {
+      const block = document.getElementById("card-swap");
+      if (!block) return;
+      block.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      const stage = block.querySelector("[data-card-swap]");
+      const target = stage || block;
+      if (typeof target.focus === "function") target.focus({ preventScroll: true });
+    });
+  }
+
   function urlHost(url) {
     const raw = String(url || "").trim();
     if (!raw || raw === "#") return "no link";
@@ -1247,7 +1274,7 @@
     return { cards: preferred.length ? preferred : all, preferred: preferred.length > 0 };
   }
 
-  function spotlightCards() {
+  function cardSwapCards() {
     return state.cards
       .filter((c) => c.lane === "try")
       .sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(a.title).localeCompare(String(b.title)))
@@ -1284,13 +1311,13 @@
         <button type="button" class="concept-hit">${conceptFace(c)}</button>
       </div>`).join("");
     return `
-      <section class="concept-block spotlight-block" id="spotlight" aria-labelledby="spotlight-title">
+      <section class="concept-block card-swap-block" id="card-swap" tabindex="-1" aria-labelledby="card-swap-title">
         <div class="concept-block-head">
-          <h3 id="spotlight-title">${brandTitle("Spotlight")}</h3>
+          <h3 id="card-swap-title">${brandTitle("Card Swap")}</h3>
           <span class="concept-test-badge">Experimental</span>
           <p>Manual stack of the top Try It reviews. Arrows only — not a board mode.</p>
         </div>
-        <div class="swap-stage" data-card-swap data-swap-interval="0" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Spotlight">
+        <div class="swap-stage" data-card-swap data-swap-interval="0" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Card Swap">
           <p class="sr-only" data-swap-live aria-live="polite"></p>
           <div class="swap-row">
             <button type="button" class="concept-nav" data-swap-prev aria-label="Previous card">‹</button>
@@ -2128,7 +2155,7 @@
       { id: "palette", ico: "⌘", title: "Open command palette", desc: "Jump, filter with operators, add, or export without leaving the board.", run: "palette" },
     ];
     return `
-      <div class="canvas-header"><div><h2>${brandTitle("Tools")}</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("Tools")}</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p><p class="tools-swap-hint">Card Swap stack is below.</p></div></div>
       <div class="tools-grid">
         ${tools.map((t) => `
           <button type="button" class="tool-card" data-tool="${t.run}">
@@ -2138,9 +2165,9 @@
           </button>`).join("")}
       </div>
       ${(() => {
-        const spot = spotlightCards();
+        const spot = cardSwapCards();
         if (!spot.length) {
-          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Spotlight holds up to three tools you choose. Pin from Tools — Card Swap stays here, not on the board.</p><p class="empty-hint">Nothing pinned yet.</p></div></section>`;
+          return `<section class="concept-block card-swap-block" id="card-swap" tabindex="-1" aria-labelledby="card-swap-title"><div class="concept-block-head"><h3 id="card-swap-title">${brandTitle("Card Swap")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Holds up to three Try It reviews. Card Swap stays on Tools, not on the board.</p><p class="empty-hint">Nothing pinned yet.</p></div></section>`;
         }
         return renderCardSwap(spot);
       })()}
