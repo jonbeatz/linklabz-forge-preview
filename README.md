@@ -16,21 +16,14 @@
 ## What's inside
 
 - **Floating command island** — search, ⌘K palette, Download/Load workspace, and a quiet ⋯ for Reset to seed.
-- **Magazine lanes** — Inbox / Try It / Parked / Skipped with bento toggle, project chips, and operator search (`lane:`, `project:`, `hardware:`, `found:`, `action:`).
+- **Magazine lanes** — Inbox / Try It / Parked / Skipped. The command island toggles **Lanes | Bento | Cover**. Lanes stay the default. Project chips and operator search (`lane:`, `project:`, `hardware:`, `found:`, `action:`) still apply.
 - **Full shelves** — Reviews, Bookmarks (typed), Spitballs (graduate → Inbox), To-do (project, severity, park, inline edit, clear done), Favorites, Tools.
 - **Detail drawer** — sticky amber strip, Copy Markdown / bridge note, linked to-do, evidence checklist, protected-seed lock, Evaluate → add to-do prompt.
 - **DM Sans + Mulish** wordmark treatment — white lead + amber italic accent on section and lane titles.
 - **PWA-ready** — Add to Home Screen manifest + icons; Session · Clean/Dirty chip.
 - **Full dataset preserved** — **19 reviews**, **7 bookmarks**, **8 spitballs**, **7 to-dos** (Muse snapshot + Trinity staged package + spitball parking lot).
-- **Concepts (test)** — GodUI-inspired Card Swap and Cover Flow, fed by the same review cards. Experimental only; Reviews still defaults to Lanes and Bento.
-
-## Test layouts
-
-Open the **Concepts** pill (or command palette → Concepts). These are vanilla CSS/JS ports of the GodUI card-swap stack and cover-flow carousel — not a new production board.
-
-- **Card Swap** — fixed 3D stack of the top-rated reviews, auto-advances, pauses on hover, prev/next. Click the front card to open the detail drawer.
-- **Cover Flow** — drag with momentum, click a side card, or use prev/next and arrow keys when the stage is focused. Click the centered card to open it.
-- `prefers-reduced-motion` flattens both: instant swaps with no tilt, and a flat cross-fade instead of the 3D spin.
+- **Cover browse (experimental)** — third board mode on the island toggle. Shows Try It, promoted, and favorites first. Snapping a card to center opens the existing detail drawer. Arrow keys move between cards. No floor reflection.
+- **Spotlight (experimental)** — under Tools only. A manual 3-card stack of the top-rated Try It reviews. Arrows only; it does not auto-advance and it is not a board mode.
 
 ## Tech stack
 

@@ -621,6 +621,16 @@ a {
   margin-left: auto;
 }
 
+.island .layout-toggle {
+  margin-left: 0;
+  flex: 0 0 auto;
+}
+
+.island .layout-toggle button {
+  min-height: 36px;
+  padding: 6px 12px;
+}
+
 .layout-toggle button {
   padding: 5px 12px;
   border-radius: var(--radius-pill);
@@ -2194,10 +2204,6 @@ a {
 .tools-tip em { color: var(--text); font-style: normal; font-weight: 600; }
 
 /* —— Concepts: GodUI-inspired test layouts (not the production board) —— */
-.pill[data-view="concepts"]:not(.active) {
-  box-shadow: inset 0 0 0 1px rgba(245, 193, 92, 0.38);
-}
-
 .concept-banner {
   display: flex;
   flex-wrap: wrap;
@@ -2541,28 +2547,24 @@ a {
     inset 0 1px 0 rgba(255, 215, 138, 0.2);
 }
 
-.flow-reflect {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 8px);
-  height: 46%;
+.cover-note {
   display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  border-radius: 18px;
-  pointer-events: none;
-  opacity: 0.3;
-  transform: scaleY(-1);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 74%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 74%);
-  filter: sepia(0.4) saturate(0.65) brightness(0.7);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
 }
 
-.flow-reflect .concept-card-face {
-  height: 220%;
+.cover-board .flow-wrap {
   width: 100%;
-  flex: none;
+}
+
+@media (max-width: 767px) {
+  .swap-tilt { transform: none !important; }
+  .cover-board .flow-stage { width: 100% !important; max-width: 100%; }
+  .island .layout-toggle button { min-height: 44px; }
 }
 
 @media (max-width: 720px) {
@@ -2580,6 +2582,5 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .swap-tilt { transform: none !important; }
   .swap-card { transition: none !important; }
-  .flow-reflect { display: none !important; }
   .flow-stage { cursor: default; }
 }

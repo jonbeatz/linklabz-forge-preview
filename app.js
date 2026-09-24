@@ -452,7 +452,6 @@
       { id: "spitballs", label: "Spitballs", icon: "◎" },
       { id: "todo", label: "To-do", icon: "☑" },
       { id: "tools", label: "Tools", icon: "⚒" },
-      { id: "concepts", label: "Concepts", icon: "✧" },
     ];
     for (const v of views) {
       if (match(`jump to ${v.label}`) || match(v.label)) {
@@ -554,12 +553,23 @@
         run: () => { ui.view = "todo"; render(); openAddTodoModal(); } },
       { id: "qa-export", label: "Download workspace", icon: "↓", keys: "export json download workspace", run: () => exportJson() },
       { id: "qa-toggle-layout",
-        label: ui.layout === "sections" ? "Toggle layout → Bento" : "Toggle layout → Lanes",
-        icon: "⧉", keys: "toggle grid sections layout bento lanes",
+        label: "Cycle board layout",
+        icon: "⧉", keys: "toggle grid sections layout bento lanes cover browse",
         run: () => {
-          ui.layout = ui.layout === "sections" ? "grid" : "sections";
+          const order = ["sections", "grid", "cover"];
+          const names = { sections: "Lanes", grid: "Bento", cover: "Cover" };
+          const i = Math.max(0, order.indexOf(ui.layout));
+          ui.layout = order[(i + 1) % order.length];
           syncFilterChrome(); ui.view = "board"; render();
-          toast(`Layout → ${ui.layout === "sections" ? "Lanes" : "Bento"}`);
+          toast(`Layout → ${names[ui.layout] || ui.layout}`);
+        } },
+      { id: "qa-layout-cover",
+        label: "Board layout → Cover",
+        icon: "⧉", keys: "cover flow browse",
+        run: () => {
+          ui.layout = "cover";
+          syncFilterChrome(); ui.view = "board"; render();
+          toast("Layout → Cover");
         } },
     ];
     for (const a of actions) {
@@ -881,6 +891,8 @@
     const showBoardChrome = ui.view === "board";
     boardFilters.classList.toggle("hidden", !showBoardChrome);
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
+    const boardLayout = document.getElementById("board-layout");
+    if (boardLayout) boardLayout.classList.toggle("hidden", !showBoardChrome);
 
     search.placeholder =
       ui.view === "board" ? "Search… lane:try project:reWavz hardware:rtx"
@@ -888,7 +900,6 @@
       : ui.view === "spitballs" ? "Search spitballs…"
       : ui.view === "todo" ? "Search to-dos…"
       : ui.view === "tools" ? "Tools shelf"
-      : ui.view === "concepts" ? "Search reviews in test layouts…"
       : "Search favorites…";
 
     const addBtn = document.getElementById("btn-add-card");
@@ -938,8 +949,6 @@
     document.getElementById("count-favorites").textContent = String(favCards + favBm);
     document.getElementById("count-spitballs").textContent = String(state.spitballs.length);
     document.getElementById("count-todo").textContent = String(state.todos.filter((t) => !t.done).length);
-    const conceptCount = document.getElementById("count-concepts");
-    if (conceptCount) conceptCount.textContent = String(state.cards.length);
 
     document.getElementById("stat-total").textContent = String(state.cards.length);
     document.getElementById("stat-try").textContent = String(state.cards.filter((c) => c.lane === "try").length);
@@ -959,7 +968,6 @@
     else if (ui.view === "spitballs") canvas.innerHTML = renderSpitballs();
     else if (ui.view === "todo") canvas.innerHTML = renderTodos();
     else if (ui.view === "tools") canvas.innerHTML = renderTools();
-    else if (ui.view === "concepts") canvas.innerHTML = renderConcepts();
     wireCanvasEvents(canvas);
   }
 
@@ -1014,14 +1022,17 @@
     return LANES.find((l) => l.id === id)?.label || "Inbox";
   }
 
-  function conceptCards() {
-    let list = [...state.cards];
-    const ops = parseSearchQuery(ui.search);
-    if (ops.lane || ops.project || ops.hardware || ops.found || ops.action || ops.text) {
-      list = list.filter((c) => cardMatchesOps(c, ops));
-    }
-    list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(a.title).localeCompare(String(b.title)));
-    return list;
+  function coverDeck() {
+    const all = filteredCards();
+    const preferred = all.filter((c) => c.lane === "try" || c.promoted || c.favorite);
+    return { cards: preferred.length ? preferred : all, preferred: preferred.length > 0 };
+  }
+
+  function spotlightCards() {
+    return state.cards
+      .filter((c) => c.lane === "try")
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(a.title).localeCompare(String(b.title)))
+      .slice(0, 3);
   }
 
   function ratingBits(c) {
@@ -1032,43 +1043,20 @@
   }
 
   function conceptFace(c) {
-    const snippet = String(c.gradingSummary || c.recommendation || "").trim();
+    const recommendation = String(c.recommendation || c.gradingSummary || "").trim();
+    const action = String(c.action || "").trim();
     const rate = ratingBits(c);
     return `
       <div class="concept-card-face">
         <div class="concept-card-top">
           <span class="badge lane-chip ${escapeHtml(c.lane || "inbox")}">${escapeHtml(laneName(c.lane))}</span>
-          <span class="badge cat">${escapeHtml(c.category || "—")}</span>
+          ${action ? `<span class="action-label">${escapeHtml(action)}</span>` : ""}
         </div>
         <p class="concept-title">${escapeHtml(c.title)}</p>
         ${rate ? `<div class="concept-rate">${rate}</div>` : ""}
-        <p class="concept-snippet">${escapeHtml(snippet || "No grading note yet.")}</p>
+        <p class="concept-snippet">${escapeHtml(recommendation || "No recommendation yet.")}</p>
         <p class="concept-host">${escapeHtml(urlHost(c.url))}</p>
       </div>`;
-  }
-
-  function renderConcepts() {
-    const list = conceptCards();
-    const header = `
-      <div class="canvas-header">
-        <div>
-          <h2>${brandTitle("Test layouts")}</h2>
-          <p>GodUI-inspired concepts — not the production default. Reviews still opens on Lanes and Bento.</p>
-        </div>
-      </div>
-      <div class="concept-banner" role="note">
-        <span class="concept-test-badge">Experimental</span>
-        <span>Same review cards as the board. Card Swap and Cover Flow are test layouts only.</span>
-      </div>`;
-    if (!list.length) {
-      return header + `<div class="empty-state"><p>No reviews match this search.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
-    }
-    const jump = `
-      <nav class="concept-jump" aria-label="Test layouts">
-        <a href="#concept-swap">Card Swap</a>
-        <a href="#concept-flow">Cover Flow</a>
-      </nav>`;
-    return header + jump + renderCardSwap(list.slice(0, 5)) + renderCoverFlow(list);
   }
 
   function renderCardSwap(list) {
@@ -1077,12 +1065,13 @@
         <button type="button" class="concept-hit">${conceptFace(c)}</button>
       </div>`).join("");
     return `
-      <section class="concept-block" id="concept-swap" aria-labelledby="concept-swap-title">
+      <section class="concept-block spotlight-block" id="spotlight" aria-labelledby="spotlight-title">
         <div class="concept-block-head">
-          <h3 id="concept-swap-title">${brandTitle("Card Swap")}</h3>
-          <p>3D stack · auto-advances about every 3.5s · pauses on hover · ${list.length} visible</p>
+          <h3 id="spotlight-title">${brandTitle("Spotlight")}</h3>
+          <span class="concept-test-badge">Experimental</span>
+          <p>Manual stack of the top Try It reviews. Arrows only — not a board mode.</p>
         </div>
-        <div class="swap-stage" data-card-swap tabindex="0" role="group" aria-roledescription="carousel" aria-label="Card swap">
+        <div class="swap-stage" data-card-swap data-swap-interval="0" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Spotlight">
           <p class="sr-only" data-swap-live aria-live="polite"></p>
           <div class="swap-row">
             <button type="button" class="concept-nav" data-swap-prev aria-label="Previous card">‹</button>
@@ -1100,14 +1089,10 @@
     const slides = list.map((c, i) => `
       <div class="flow-item" data-flow-index="${i}" data-review-id="${escapeHtml(c.id)}" data-title="${escapeHtml(c.title)}">
         <button type="button" class="concept-hit">${conceptFace(c)}</button>
-        <div class="flow-reflect" aria-hidden="true">${conceptFace(c)}</div>
       </div>`).join("");
     return `
-      <section class="concept-block" id="concept-flow" aria-labelledby="concept-flow-title">
-        <div class="concept-block-head">
-          <h3 id="concept-flow-title">${brandTitle("Cover Flow")}</h3>
-          <p>Drag to flick · click a side card to center it · arrow keys when this stage is focused · ${list.length} reviews</p>
-        </div>
+      <section class="concept-block cover-board" id="concept-flow" aria-label="Cover browse">
+        <p class="cover-note"><span class="concept-test-badge">Experimental</span> Snap a card to center to open it in the detail drawer. Arrow keys move between cards.</p>
         <div class="flow-wrap" data-cover-flow>
           <p class="sr-only" data-flow-live aria-live="polite"></p>
           <div class="flow-stage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Cover flow">${slides}</div>
@@ -1171,8 +1156,10 @@
 
     function startTimer() {
       stopTimer();
-      if (reduce || n < 2 || paused) return;
-      timer = setInterval(() => advance(false), 3500);
+    }
+
+    function tiltEnabled() {
+      return !prefersReducedMotion() && window.innerWidth >= 768;
     }
 
     function syncPause() {
@@ -1253,12 +1240,17 @@
     }
 
     function kickTilt() {
-      if (reduce) return;
+      if (!tiltEnabled()) return;
       if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltTick);
     }
 
     function onPointerMove(e) {
-      if (reduce || e.pointerType === "touch") return;
+      if (!tiltEnabled() || e.pointerType === "touch") {
+        gx = 0;
+        gy = 0;
+        tilt.style.transform = "none";
+        return;
+      }
       const rect = root.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       const px = (e.clientX - rect.left) / rect.width - 0.5;
@@ -1336,7 +1328,6 @@
     if (nextBtn) nextBtn.addEventListener("click", onNext);
 
     apply(false);
-    startTimer();
 
     conceptCleanups.push(() => {
       stopTimer();
@@ -1380,20 +1371,22 @@
     let booted = false;
     let announced = -1;
     let primed = false;
+    let openOnSettle = false;
 
     function clampIndex(v) {
       return Math.max(0, Math.min(count - 1, v));
     }
 
     function measure() {
+      const narrow = window.innerWidth < 768;
       const parent = wrap.parentElement || wrap;
       const avail = parent.clientWidth || window.innerWidth;
       let itemW = 260;
-      if (avail < 760) itemW = Math.round(Math.min(230, Math.max(176, avail * 0.62)));
+      if (narrow) itemW = Math.round(Math.min(300, Math.max(210, avail * 0.82)));
       const itemH = Math.round(itemW * (320 / 260));
-      const stageW = Math.min(avail, Math.round(itemW * 3));
-      const stageH = Math.round(itemH * (reduce ? 1.12 : 1.72));
-      stage.style.width = `${stageW}px`;
+      const stageW = narrow ? avail : Math.min(avail, Math.round(itemW * 3));
+      const stageH = itemH + (narrow ? 36 : 56);
+      stage.style.width = narrow ? "100%" : `${stageW}px`;
       stage.style.height = `${stageH}px`;
       if (!reduce) stage.style.perspective = "1200px";
       else stage.style.perspective = "none";
@@ -1402,7 +1395,7 @@
         el.style.height = `${itemH}px`;
         el.style.marginLeft = `${-itemW / 2}px`;
         el.style.marginTop = `${-itemH / 2}px`;
-        el.style.top = reduce ? "50%" : "38%";
+        el.style.top = "50%";
       });
       spacing = itemW * 0.72 + 16;
     }
@@ -1435,7 +1428,6 @@
         const offset = i - pos;
         const abs = Math.abs(offset);
         const p = placement(offset);
-        const reflect = el.querySelector(".flow-reflect");
         el.style.transition = reduce && primed ? "opacity 180ms linear" : "none";
         el.style.transform = reduce
           ? "translate3d(0, 0, 0)"
@@ -1444,9 +1436,6 @@
         el.style.zIndex = String(Math.round(100 - abs * 10));
         el.style.pointerEvents = p.opacity < 0.08 ? "none" : "auto";
         el.classList.toggle("is-front", abs < 0.45);
-        if (reflect) {
-          reflect.hidden = reduce || abs > 2.35;
-        }
       });
       primed = true;
     }
@@ -1491,29 +1480,35 @@
         running = false;
         layout();
         syncChrome(true);
+        if (openOnSettle) {
+          openOnSettle = false;
+          openDrawer(ids[index]);
+        }
         return;
       }
       layout();
       raf = requestAnimationFrame(tick);
     }
 
-    function goTo(i, immediate) {
+    function finishGo() {
+      layout();
+      syncChrome(true);
+      if (openOnSettle) {
+        openOnSettle = false;
+        openDrawer(ids[index]);
+      }
+    }
+
+    function goTo(i, immediate, openOnSnap) {
       index = clampIndex(i);
       target = index;
       ui.conceptFlowId = ids[index];
-      if (immediate || reduce) {
+      openOnSettle = !!(openOnSnap && booted);
+      if (immediate || reduce || (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02)) {
         stopSpring();
         pos = target;
         vel = 0;
-        layout();
-        syncChrome(true);
-        return;
-      }
-      if (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02) {
-        pos = target;
-        vel = 0;
-        layout();
-        syncChrome(true);
+        finishGo();
         return;
       }
       if (!running) {
@@ -1576,14 +1571,15 @@
         if (item) {
           const i = Number(item.dataset.flowIndex);
           if (i === index) openDrawer(item.dataset.reviewId);
-          else goTo(i, reduce);
+          else goTo(i, reduce, true);
         }
         return;
       }
       ignoreClickUntil = performance.now() + 80;
       let dest = Math.round(pos);
       if (Math.abs(velocity) > 0.6) dest -= Math.sign(velocity);
-      goTo(dest, reduce);
+      dest = clampIndex(dest);
+      goTo(dest, reduce, dest !== index);
     }
 
     function onPointerUp() { finishDrag(); }
@@ -1604,7 +1600,7 @@
       }
       const i = Number(item.dataset.flowIndex);
       if (i === index) openDrawer(item.dataset.reviewId);
-      else goTo(i, reduce);
+      else goTo(i, reduce, true);
     }
 
     function onKeyDown(e) {
@@ -1655,6 +1651,20 @@
   }
 
   function renderBoard() {
+    if (ui.layout === "cover") {
+      const deck = coverDeck();
+      const list = deck.cards;
+      const scope = deck.preferred ? "Try It, promoted, and favorites" : "current review set";
+      const header = `
+        <div class="canvas-header">
+          <div>
+            <h2>${brandTitle("Reviews")}</h2>
+            <p>${list.length} card${list.length === 1 ? "" : "s"} · Cover browse · ${scope}</p>
+          </div>
+        </div>`;
+      if (!list.length) return header + `<div class="empty-state"><p>No cards match filters.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
+      return header + renderCoverFlow(list);
+    }
     const list = filteredCards();
     const header = `
       <div class="canvas-header">
@@ -1876,6 +1886,13 @@
             <p>${escapeHtml(t.desc)}</p>
           </button>`).join("")}
       </div>
+      ${(() => {
+        const spot = spotlightCards();
+        if (!spot.length) {
+          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No Try It reviews to spotlight.</p></div></section>`;
+        }
+        return renderCardSwap(spot);
+      })()}
       <div class="tools-tip" role="note">
         <strong>Install / Add to Home Screen</strong>
         <p>On phone or tablet: open the browser share/menu → <em>Add to Home Screen</em> / <em>Install app</em>. Forge installs as a standalone board (PWA manifest linked).</p>

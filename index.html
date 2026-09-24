@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260924a" />
+  <link rel="stylesheet" href="styles.css?v=20260924b" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -61,8 +61,13 @@
         <button type="button" class="pill" data-view="todo">To-do <span class="pill-count" id="count-todo">0</span></button>
         <button type="button" class="pill" data-view="favorites">Favorites <span class="pill-count" id="count-favorites">0</span></button>
         <button type="button" class="pill" data-view="tools">Tools</button>
-        <button type="button" class="pill" data-view="concepts">Concepts <span class="pill-count" id="count-concepts">0</span></button>
       </nav>
+
+      <div class="layout-toggle" id="board-layout" role="group" aria-label="Board layout">
+        <button type="button" class="active" data-layout="sections" title="Magazine lanes">Lanes</button>
+        <button type="button" data-layout="grid" title="Bento grid">Bento</button>
+        <button type="button" data-layout="cover" title="Cover flow browse">Cover</button>
+      </div>
 
       <div class="island-tools">
         <button type="button" class="btn-ghost-icon search-toggle" id="btn-search-toggle" aria-label="Toggle search" aria-expanded="false" title="Search">⌕</button>
@@ -116,10 +121,6 @@
         <option value="newest">Newest</option>
         <option value="az">A–Z</option>
       </select>
-      <div class="layout-toggle" role="group" aria-label="Board layout">
-        <button type="button" class="active" data-layout="sections" title="Magazine lanes">Lanes</button>
-        <button type="button" data-layout="grid" title="Bento grid">Bento</button>
-      </div>
     </div>
 
     <div class="project-strip" id="project-strip" aria-label="Goes-to project filters"></div>
@@ -166,6 +167,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260924a"></script>
+  <script src="app.js?v=20260924b"></script>
 </body>
 </html>
