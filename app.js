@@ -69,10 +69,14 @@
     paletteItems: [],
     filterBookmarkType: "",
     searchOpen: false,
+    todoStatusFilter: "all",
+    todoProjectFilter: "",
   };
 
   /** @type {string|null} */
   let sessionBaseline = null;
+  let exportedThisSession = false;
+  let backupNudgeShown = false;
 
   function normalizeCard(c) {
     if (!c || typeof c !== "object") return c;
@@ -97,10 +101,24 @@
     return b;
   }
 
+  function normalizeTodo(t) {
+    if (!t || typeof t !== "object") return t;
+    if (t.done === undefined) t.done = false;
+    if (t.parked === undefined) t.parked = false;
+    if (t.severity === undefined) t.severity = "med";
+    if (t.goesTo === undefined) t.goesTo = t.project || "";
+    if (t.order === undefined) t.order = 0;
+    if (t.linkedCardId === undefined) t.linkedCardId = null;
+    return t;
+  }
+
   function projectList() {
     const set = new Set(PROJECTS_BASE);
     for (const c of state.cards) {
       if (c.goesTo) set.add(c.goesTo);
+    }
+    for (const t of state.todos || []) {
+      if (t.goesTo) set.add(t.goesTo);
     }
     return [...set].sort((a, b) => {
       const ia = PROJECTS_BASE.indexOf(a);
@@ -126,7 +144,7 @@
       cards: cardsSrc.map(normalizeCard),
       bookmarks: (Array.isArray(raw.bookmarks) ? raw.bookmarks : []).map(normalizeBookmark),
       spitballs: Array.isArray(raw.spitballs) ? raw.spitballs : [],
-      todos: Array.isArray(raw.todos) ? raw.todos : [],
+      todos: (Array.isArray(raw.todos) ? raw.todos : []).map(normalizeTodo),
     };
   }
 
@@ -154,8 +172,24 @@
     if (!chip) return;
     const dirty = sessionBaseline != null && fingerprintState() !== sessionBaseline;
     chip.classList.toggle("dirty", dirty);
-    chip.title = dirty ? "Session workspace · unsaved changes vs baseline" : "Session workspace · clean";
-    if (label) label.textContent = dirty ? "Dirty" : "Clean";
+    chip.title = dirty
+      ? "Session · Dirty — unsaved changes vs last clean baseline"
+      : "Session · Clean — matches last export/load/reset baseline";
+    if (label) label.textContent = dirty ? "Session · Dirty" : "Session · Clean";
+    maybeBackupNudge(dirty);
+  }
+
+  function maybeBackupNudge(dirty) {
+    if (!dirty || exportedThisSession || backupNudgeShown) return;
+    backupNudgeShown = true;
+    setTimeout(() => {
+      if (!exportedThisSession && sessionBaseline != null && fingerprintState() !== sessionBaseline) {
+        toast("Session · Dirty — Download workspace when ready", {
+          actionLabel: "Download",
+          action: () => exportJson(),
+        });
+      }
+    }, 1800);
   }
 
   function loadFromStorage() {
@@ -232,26 +266,29 @@
       .replace(/"/g, "&quot;");
   }
 
-  function toast(message, { undo } = {}) {
+  function toast(message, { undo, action, actionLabel } = {}) {
     const host = document.getElementById("toast-host");
     const el = document.createElement("div");
     el.className = "toast";
     el.innerHTML = `<span>${escapeHtml(message)}</span>`;
-    if (undo) {
+    const fn = action || undo;
+    if (fn) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = "Undo";
+      btn.textContent = actionLabel || (undo ? "Undo" : "OK");
       btn.addEventListener("click", () => {
-        undo();
+        fn();
         el.remove();
-        if (ui.undoTimer) clearTimeout(ui.undoTimer);
-        ui.undoTimer = null;
-        ui.undoPayload = null;
+        if (undo && ui.undoTimer) {
+          clearTimeout(ui.undoTimer);
+          ui.undoTimer = null;
+          ui.undoPayload = null;
+        }
       });
       el.appendChild(btn);
     }
     host.appendChild(el);
-    setTimeout(() => el.remove(), undo ? UNDO_MS + 200 : 3200);
+    setTimeout(() => el.remove(), fn ? UNDO_MS + 200 : 3200);
   }
 
   function categories() {
@@ -478,6 +515,32 @@
       }
     }
 
+    // Quick capture: "todo …" / "t …" and standing "Add to-do from search…"
+    const rawQ = query.trim();
+    const captureMatch = /^(?:todo|t)\s+(.+)$/i.exec(rawQ);
+    const captureText = captureMatch ? captureMatch[1].trim() : "";
+    if (rawQ) {
+      const fromSearch = captureText || rawQ;
+      items.unshift({
+        id: "qa-add-todo-from-search",
+        group: "Quick capture",
+        label: "Add to-do from search…",
+        icon: "☑",
+        meta: fromSearch.length > 42 ? fromSearch.slice(0, 42) + "…" : fromSearch,
+        run: () => addTodoQuick(fromSearch),
+      });
+    }
+    if (captureText) {
+      items.unshift({
+        id: "qa-capture-todo",
+        group: "Quick capture",
+        label: `Add to-do: ${captureText}`,
+        icon: "☑",
+        meta: "↵ create",
+        run: () => addTodoQuick(captureText),
+      });
+    }
+
     const actions = [
       { id: "qa-add-card", label: "Add review", icon: "+", keys: "add card new review", run: () => openAddCardModal() },
       { id: "qa-add-bm", label: "Add bookmark", icon: "+", keys: "add bookmark new",
@@ -616,6 +679,8 @@
     ui.filterFavorites = false;
     ui.filterProject = "";
     ui.filterBookmarkType = "";
+    ui.todoStatusFilter = "all";
+    ui.todoProjectFilter = "";
     ui.search = "";
     const search = document.getElementById("search");
     if (search) search.value = "";
@@ -1034,18 +1099,61 @@
 
   function renderTodos() {
     const q = ui.search.trim().toLowerCase();
-    let active = state.todos.filter((t) => !t.parked);
-    let parked = state.todos.filter((t) => t.parked);
-    if (q) {
-      active = active.filter((t) => t.text.toLowerCase().includes(q));
-      parked = parked.filter((t) => t.text.toLowerCase().includes(q));
+    const status = ui.todoStatusFilter || "all";
+    const proj = ui.todoProjectFilter || "";
+    let list = state.todos.map(normalizeTodo);
+    if (q) list = list.filter((t) => {
+      const hay = [t.text, t.goesTo, t.severity].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+    if (proj === "__none__") list = list.filter((t) => !t.goesTo);
+    else if (proj) list = list.filter((t) => t.goesTo === proj);
+
+    if (status === "active") list = list.filter((t) => !t.done && !t.parked);
+    else if (status === "high") list = list.filter((t) => String(t.severity || "").toLowerCase() === "high");
+    else if (status === "parked") list = list.filter((t) => !!t.parked);
+    else if (status === "done") list = list.filter((t) => !!t.done);
+    else if (status === "unassigned") list = list.filter((t) => !t.goesTo);
+
+    let active = [];
+    let parked = [];
+    let showParkedZone = false;
+    if (status === "all") {
+      active = list.filter((t) => !t.parked);
+      parked = list.filter((t) => t.parked);
+      showParkedZone = true;
+    } else if (status === "parked") {
+      parked = list;
+      showParkedZone = true;
+    } else {
+      active = list;
     }
     active.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     parked.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    const statusChips = [
+      ["all", "All"],
+      ["active", "Active"],
+      ["high", "High"],
+      ["parked", "Parked"],
+      ["done", "Done"],
+      ["unassigned", "Unassigned"],
+    ].map(([id, label]) =>
+      `<button type="button" class="chip ${status === id ? "on" : ""}" data-todo-status="${id}">${label}</button>`
+    ).join("");
+
+    const projectChips =
+      `<button type="button" class="chip ${proj === "" ? "on" : ""}" data-todo-project="">All projects</button>` +
+      `<button type="button" class="chip ${proj === "__none__" ? "on" : ""}" data-todo-project="__none__">No project</button>` +
+      projectList().map((p) =>
+        `<button type="button" class="chip ${proj === p ? "on" : ""}" data-todo-project="${escapeHtml(p)}">${escapeHtml(p)}</button>`
+      ).join("");
+
     const item = (t) => `
       <div class="shelf-item todo-item" data-todo-id="${escapeHtml(t.id)}">
         <button type="button" class="todo-check ${t.done ? "done" : ""}" data-todo-toggle="${escapeHtml(t.id)}" aria-label="Toggle done">${t.done ? "✓" : ""}</button>
-        <span class="todo-text ${t.done ? "struck" : ""}">${escapeHtml(t.text)}</span>
+        <span class="todo-text ${t.done ? "struck" : ""}" data-todo-edit="${escapeHtml(t.id)}" title="Tap to edit">${escapeHtml(t.text)}</span>
+        ${t.goesTo ? `<span class="badge goes todo-goes">${escapeHtml(t.goesTo)}</span>` : `<span class="badge todo-goes dim">—</span>`}
         <span class="sev ${escapeHtml(t.severity || "med")}">${escapeHtml(t.severity || "med")}</span>
         <div class="todo-controls">
           <button type="button" data-todo-up="${escapeHtml(t.id)}" title="Move up">↑</button>
@@ -1054,14 +1162,24 @@
           <button type="button" data-todo-del="${escapeHtml(t.id)}" title="Delete">✕</button>
         </div>
       </div>`;
+
+    const doneCount = state.todos.filter((t) => t.done).length;
     return `
-      <div class="canvas-header"><div><h2>${brandTitle("To-do")}</h2><p>Personal tracker — check-off, severity, reorder, parking lane.</p></div></div>
-      <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button></div>
-      <div class="shelf">${active.length ? active.map(item).join("") : `<div class="empty-state"><p>Inbox clear.</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
+      <div class="canvas-header"><div><h2>${brandTitle("To-do")}</h2><p>Personal tracker — projects, severity, inline edit, parking lane.</p></div></div>
+      <div class="todo-filter-strip" aria-label="To-do status filters">${statusChips}</div>
+      <div class="todo-project-strip" aria-label="To-do project filters">${projectChips}</div>
+      <div class="shelf-toolbar">
+        <button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button>
+        <button type="button" class="btn-ghost" id="btn-clear-done" ${doneCount ? "" : "disabled"} title="Remove completed to-dos">Clear done${doneCount ? ` (${doneCount})` : ""}</button>
+      </div>
+      <div class="shelf">${(status === "parked" ? parked : active).length
+        ? (status === "parked" ? parked : active).map(item).join("")
+        : `<div class="empty-state"><p>${status === "all" ? "Inbox clear." : "Nothing matches."}</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
+      ${showParkedZone && status === "all" ? `
       <div class="parked-zone">
         <div class="label">Parking lane</div>
         <div class="shelf">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
-      </div>`;
+      </div>` : ""}`;
   }
 
   function renderTools() {
@@ -1081,6 +1199,10 @@
             <h3>${escapeHtml(t.title)}</h3>
             <p>${escapeHtml(t.desc)}</p>
           </button>`).join("")}
+      </div>
+      <div class="tools-tip" role="note">
+        <strong>Install / Add to Home Screen</strong>
+        <p>On phone or tablet: open the browser share/menu → <em>Add to Home Screen</em> / <em>Install app</em>. Forge installs as a standalone board (PWA manifest linked).</p>
       </div>`;
   }
 
@@ -1120,11 +1242,31 @@
     });
     const addTd = canvas.querySelector("#btn-add-todo");
     if (addTd) addTd.addEventListener("click", openAddTodoModal);
+    const clearDone = canvas.querySelector("#btn-clear-done");
+    if (clearDone) clearDone.addEventListener("click", clearDoneTodos);
+    canvas.querySelectorAll("[data-todo-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.todoStatusFilter = btn.dataset.todoStatus || "all";
+        renderCanvas();
+      });
+    });
+    canvas.querySelectorAll("[data-todo-project]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.todoProjectFilter = btn.dataset.todoProject || "";
+        renderCanvas();
+      });
+    });
     canvas.querySelectorAll("[data-todo-toggle]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const t = state.todos.find((x) => x.id === btn.dataset.todoToggle);
         if (!t) return;
         t.done = !t.done; save(); render();
+      });
+    });
+    canvas.querySelectorAll("[data-todo-edit]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        beginTodoInlineEdit(el, el.dataset.todoEdit);
       });
     });
     canvas.querySelectorAll("[data-todo-up]").forEach((btn) => {
@@ -1386,22 +1528,118 @@
       toast("Linked to-do already exists — jumped to To-do");
       return;
     }
-    const maxOrder = state.todos.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
-    const todo = {
-      id: uid("todo"),
-      text,
-      done: false,
+    const todo = addTodoQuick(text, {
       severity: "med",
-      parked: false,
-      order: maxOrder + 1,
-      createdAt: new Date().toISOString(),
+      goesTo: c.goesTo || "",
       linkedCardId: c.id,
-    };
-    state.todos.push(todo);
+      silent: true,
+      stayView: true,
+    });
     c.linkedTodoId = todo.id;
     save();
     openDrawer(c.id);
     toast("Linked to-do created");
+  }
+
+  function isEvaluateAction(action) {
+    const a = String(action || "").toLowerCase().trim();
+    if (!a) return false;
+    return a === "evaluate" || a === "eval" || a.includes("eval");
+  }
+
+  function addTodoQuick(text, opts = {}) {
+    const cleaned = String(text || "").trim();
+    if (!cleaned) {
+      toast("Task text required");
+      return null;
+    }
+    const maxOrder = state.todos.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
+    const todo = normalizeTodo({
+      id: uid("todo"),
+      text: cleaned,
+      done: false,
+      severity: opts.severity || "med",
+      parked: !!opts.parked,
+      goesTo: opts.goesTo || "",
+      order: maxOrder + 1,
+      createdAt: new Date().toISOString(),
+      linkedCardId: opts.linkedCardId || null,
+    });
+    state.todos.push(todo);
+    save();
+    if (opts.stayView !== true) {
+      ui.view = "todo";
+    }
+    if (!opts.silent) {
+      render();
+      toast(`To-do added · ${cleaned}`);
+    }
+    return todo;
+  }
+
+  function clearDoneTodos() {
+    const removed = state.todos.filter((t) => t.done);
+    if (!removed.length) {
+      toast("No completed to-dos");
+      return;
+    }
+    if (!confirm(`Clear ${removed.length} completed to-do${removed.length === 1 ? "" : "s"}?`)) return;
+    state.todos = state.todos.filter((t) => !t.done);
+    save();
+    render();
+    toast(`Cleared ${removed.length} done`, {
+      undo: () => {
+        state.todos = state.todos.concat(removed);
+        save();
+        render();
+        toast("Restored completed to-dos");
+      },
+    });
+  }
+
+  function beginTodoInlineEdit(el, id) {
+    const t = state.todos.find((x) => x.id === id);
+    if (!t || el.isContentEditable) return;
+    const original = t.text;
+    el.contentEditable = "true";
+    el.classList.add("editing");
+    el.focus();
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+    let finished = false;
+    const finish = (commit) => {
+      if (finished) return;
+      finished = true;
+      el.contentEditable = "false";
+      el.classList.remove("editing");
+      el.removeEventListener("keydown", onKey);
+      el.removeEventListener("blur", onBlur);
+      if (commit) {
+        const next = el.textContent.replace(/\s+/g, " ").trim();
+        if (!next) {
+          el.textContent = original;
+        } else if (next !== original) {
+          t.text = next;
+          save();
+          render();
+          return;
+        }
+      } else {
+        el.textContent = original;
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    };
+    const onBlur = () => finish(true);
+    el.addEventListener("keydown", onKey);
+    el.addEventListener("blur", onBlur);
   }
 
   function openDrawer(id) {
@@ -1443,7 +1681,7 @@
         <button type="button" class="btn-ghost" id="d-copy-md">Copy Markdown</button>
         <button type="button" class="btn-ghost" id="d-copy-bridge">Copy bridge note</button>
         <button type="button" class="btn-ghost" id="d-share">Share card</button>
-        <button type="button" class="btn-ghost" id="d-link-todo">${c.linkedTodoId ? "Open linked to-do" : "Linked to-do"}</button>
+        <button type="button" class="btn-ghost" id="d-link-todo">${c.linkedTodoId ? "Open linked to-do" : (isEvaluateAction(c.action) ? "Add to-do" : "Linked to-do")}</button>
         <button type="button" class="btn-ghost" id="d-fav">${c.favorite ? "★ Favorited" : "☆ Favorite"}</button>
         <button type="button" class="btn-ghost" id="d-promote">${c.promoted ? "↑ Promoted" : "Promote"}</button>
         <button type="button" class="btn-danger" id="d-delete" ${c.protected ? 'title="Protected seed — confirms harder"' : ""}>${c.protected ? "🔒 Delete" : "Delete"}</button>
@@ -1498,10 +1736,13 @@
         <div class="field-label">Evidence checklist</div>
         <div class="evidence-list" id="d-evidence">
           ${(Array.isArray(c.evidence) ? c.evidence : []).map((e, i) => `
-            <label class="evidence-row ${e.done ? "done" : ""}">
-              <input type="checkbox" data-ev-i="${i}" ${e.done ? "checked" : ""} />
-              <span>${escapeHtml(e.text || "")}</span>
-            </label>`).join("") || `<p style="color:var(--text-dim);font-size:0.85rem;margin:0">No evidence items yet.</p>`}
+            <div class="evidence-row ${e.done ? "done" : ""}">
+              <label class="evidence-check">
+                <input type="checkbox" data-ev-i="${i}" ${e.done ? "checked" : ""} />
+                <span>${escapeHtml(e.text || "")}</span>
+              </label>
+              <button type="button" class="evidence-del" data-ev-del="${i}" title="Remove" aria-label="Remove evidence">✕</button>
+            </div>`).join("") || `<p style="color:var(--text-dim);font-size:0.85rem;margin:0">No evidence items yet.</p>`}
         </div>
         <div class="evidence-add">
           <input type="text" id="d-ev-input" placeholder="Add evidence item…" />
@@ -1553,6 +1794,15 @@
         save();
         openDrawer(c.id);
       });
+      evList.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-ev-del]");
+        if (!btn) return;
+        const i = Number(btn.dataset.evDel);
+        if (!Array.isArray(c.evidence) || !c.evidence[i]) return;
+        c.evidence.splice(i, 1);
+        save();
+        openDrawer(c.id);
+      });
     }
     const evAdd = document.getElementById("d-ev-add");
     const evInput = document.getElementById("d-ev-input");
@@ -1581,7 +1831,15 @@
       c.lane = b.dataset.lane; save(); render(); openDrawer(c.id);
     });
     document.getElementById("d-action-select").addEventListener("change", (e) => {
-      c.action = e.target.value || null; save(); render(); openDrawer(c.id);
+      const prev = c.action;
+      c.action = e.target.value || null;
+      save(); render(); openDrawer(c.id);
+      if (isEvaluateAction(c.action) && !isEvaluateAction(prev) && !c.linkedTodoId) {
+        toast("Add linked to-do?", {
+          actionLabel: "Yes",
+          action: () => linkTodoFromCard(c),
+        });
+      }
     });
     document.getElementById("d-goes").addEventListener("change", (e) => {
       c.goesTo = e.target.value; save(); render(); openDrawer(c.id);
@@ -1729,6 +1987,11 @@
       const title = document.getElementById("f-title").value.trim();
       const url = document.getElementById("f-url").value.trim();
       if (!title || !url) { toast("Title and URL required"); return; }
+      const dup = findBookmarkByUrl(url);
+      if (dup) {
+        toast(`URL already bookmarked — “${dup.title}”`);
+        return;
+      }
       state.bookmarks.unshift(normalizeBookmark({
         id: uid("bm"), title, url,
         note: document.getElementById("f-note").value.trim(),
@@ -1766,13 +2029,17 @@
     openModal(
       "Add to-do",
       `<div class="form-grid">
-        <label>Task<input id="f-text" /></label>
+        <label class="full">Task<input id="f-text" /></label>
         <label>Severity<select id="f-sev">
           <option value="high">high</option>
           <option value="med" selected>med</option>
           <option value="low">low</option>
         </select></label>
-        <label><span style="text-transform:none;letter-spacing:normal;color:var(--text-muted)"><input type="checkbox" id="f-park" /> Park for later</span></label>
+        <label>Destination project<select id="f-goes">
+          <option value="">— none —</option>
+          ${projectList().map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("")}
+        </select></label>
+        <label class="full"><span style="text-transform:none;letter-spacing:normal;color:var(--text-muted)"><input type="checkbox" id="f-park" /> Park for later</span></label>
       </div>`,
       `<button type="button" class="btn-ghost" id="modal-cancel">Cancel</button>
        <button type="button" class="btn-gold" id="modal-save">Save</button>`
@@ -1781,14 +2048,16 @@
     document.getElementById("modal-save").onclick = () => {
       const text = document.getElementById("f-text").value.trim();
       if (!text) { toast("Task required"); return; }
-      const maxOrder = state.todos.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
-      state.todos.push({
-        id: uid("todo"), text, done: false,
+      addTodoQuick(text, {
         severity: document.getElementById("f-sev").value,
+        goesTo: document.getElementById("f-goes").value,
         parked: document.getElementById("f-park").checked,
-        order: maxOrder + 1, createdAt: new Date().toISOString(),
+        silent: true,
       });
-      save(); closeModal(); render(); toast("To-do added");
+      closeModal();
+      ui.view = "todo";
+      render();
+      toast("To-do added");
     };
   }
 
@@ -1810,6 +2079,12 @@
     return state.cards.find((c) => c.id !== exceptId && normalizeUrl(c.url) === key) || null;
   }
 
+  function findBookmarkByUrl(url, exceptId) {
+    const key = normalizeUrl(url);
+    if (!key) return null;
+    return state.bookmarks.find((b) => b.id !== exceptId && normalizeUrl(b.url) === key) || null;
+  }
+
   function exportPayload() {
     return {
       version: state.version || 1,
@@ -1828,6 +2103,8 @@
     a.download = `linklabz-forge-workspace-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    exportedThisSession = true;
+    markSessionClean();
     toast("Workspace downloaded");
   }
 
@@ -1864,7 +2141,10 @@
       save(); closeDrawer();
       ui.filterLane = ""; ui.filterCategory = "";
       ui.filterPromoted = false; ui.filterFavorites = false;
-      ui.filterProject = ""; ui.filterBookmarkType = ""; ui.search = "";
+      ui.filterProject = ""; ui.filterBookmarkType = "";
+      ui.todoStatusFilter = "all"; ui.todoProjectFilter = "";
+      ui.search = "";
+      exportedThisSession = false; backupNudgeShown = false;
       document.getElementById("search").value = "";
       markSessionClean();
       render(); toast("Reset to seed");
