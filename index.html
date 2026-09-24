@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260923d" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -47,11 +47,11 @@
           <span id="kbd-chip-label">⌘K</span>
         </button>
         <button type="button" class="btn-gold" id="btn-add-card">+ Add</button>
+        <button type="button" class="btn-ghost" id="btn-export" title="Download workspace JSON">↓ Download</button>
+        <button type="button" class="btn-ghost" id="btn-import" title="Load workspace JSON">↑ Load</button>
         <div class="more-menu">
-          <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="Workspace">⋯</button>
+          <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="More workspace actions" aria-label="More workspace actions">⋯</button>
           <div class="more-dropdown" id="more-dropdown" hidden>
-            <button type="button" id="btn-export">↓ Export JSON</button>
-            <button type="button" id="btn-import">↑ Import JSON</button>
             <button type="button" id="btn-reset">↺ Reset to seed</button>
           </div>
           <input type="file" id="import-file" accept="application/json,.json" class="sr-only" />
@@ -138,6 +138,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260923d"></script>
 </body>
 </html>

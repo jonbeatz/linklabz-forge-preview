@@ -16,10 +16,25 @@
   ];
   const ACTIONS = ["implement", "cherrypick", "reference", "evaluate", "done", "pass"];
   const LANES = [
+    { id: "inbox", label: "Inbox" },
     { id: "try", label: "Try It" },
     { id: "parked", label: "Parked" },
     { id: "skipped", label: "Skipped" },
   ];
+  const HARDWARE_FITS = [
+    "No hardware dependency",
+    "RTX 5060 Ti 16GB",
+    "RTX 4090 reference",
+    "GTX 1660",
+    "Spare PC",
+  ];
+  const RATING_RUBRIC = {
+    1: "archive",
+    2: "weak reference",
+    3: "useful",
+    4: "test/harvest",
+    5: "strategic fit",
+  };
 
   /** @type {{cards:any[],bookmarks:any[],spitballs:any[],todos:any[],version?:number}} */
   let state = { version: 1, cards: [], bookmarks: [], spitballs: [], todos: [] };
@@ -47,6 +62,10 @@
     if (!c || typeof c !== "object") return c;
     if (c.screenshotDriveUrl === undefined) c.screenshotDriveUrl = null;
     if (c.screenshot === undefined) c.screenshot = null;
+    if (c.foundBy === undefined) c.foundBy = "";
+    if (c.hardwareFit === undefined) c.hardwareFit = "No hardware dependency";
+    if (c.revisitDate === undefined) c.revisitDate = "";
+    if (!c.lane) c.lane = "inbox";
     if (!Array.isArray(c.cherryPick)) c.cherryPick = c.cherryPick ? [String(c.cherryPick)] : [];
     return c;
   }
@@ -346,7 +365,7 @@
         run: () => { ui.view = "spitballs"; render(); openAddSpitballModal(); } },
       { id: "qa-add-todo", label: "Add to-do", icon: "+", keys: "add todo new",
         run: () => { ui.view = "todo"; render(); openAddTodoModal(); } },
-      { id: "qa-export", label: "Export JSON", icon: "↓", keys: "export json download", run: () => exportJson() },
+      { id: "qa-export", label: "Download workspace", icon: "↓", keys: "export json download workspace", run: () => exportJson() },
       { id: "qa-toggle-layout",
         label: ui.layout === "sections" ? "Toggle layout → Bento" : "Toggle layout → Lanes",
         icon: "⧉", keys: "toggle grid sections layout bento lanes",
@@ -502,30 +521,37 @@
 
     const moreBtn = document.getElementById("btn-more");
     const moreDrop = document.getElementById("more-dropdown");
-    moreBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const open = moreDrop.hasAttribute("hidden");
-      if (open) moreDrop.removeAttribute("hidden");
-      else moreDrop.setAttribute("hidden", "");
-      moreBtn.setAttribute("aria-expanded", String(open));
-    });
-    document.addEventListener("click", () => {
+    function closeMoreMenu() {
       moreDrop.setAttribute("hidden", "");
       moreBtn.setAttribute("aria-expanded", "false");
+    }
+    function openMoreMenu() {
+      moreDrop.removeAttribute("hidden");
+      moreBtn.setAttribute("aria-expanded", "true");
+    }
+    closeMoreMenu(); // never land with menu open
+    moreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (moreDrop.hasAttribute("hidden")) openMoreMenu();
+      else closeMoreMenu();
+    });
+    document.addEventListener("click", closeMoreMenu);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeMoreMenu();
     });
     moreDrop.addEventListener("click", (e) => e.stopPropagation());
 
     document.getElementById("btn-export").addEventListener("click", () => {
-      moreDrop.setAttribute("hidden", "");
+      closeMoreMenu();
       exportJson();
     });
     document.getElementById("btn-import").addEventListener("click", () => {
-      moreDrop.setAttribute("hidden", "");
+      closeMoreMenu();
       document.getElementById("import-file").click();
     });
     document.getElementById("import-file").addEventListener("change", importJson);
     document.getElementById("btn-reset").addEventListener("click", () => {
-      moreDrop.setAttribute("hidden", "");
+      closeMoreMenu();
       resetToSeed();
     });
 
@@ -1006,6 +1032,16 @@
         </select>
       </div>
       <div class="field-block"><div class="field-label">Category · ${escapeHtml(c.category || "—")}</div></div>
+      <div class="meta-grid">
+        <label class="field-block"><div class="field-label">Found by</div>
+          <input type="text" id="d-found" value="${escapeHtml(c.foundBy || "")}" placeholder="Name or source" /></label>
+        <label class="field-block"><div class="field-label">Hardware fit</div>
+          <select id="d-hw">${HARDWARE_FITS.map((h) => `<option value="${escapeHtml(h)}" ${c.hardwareFit === h ? "selected" : ""}>${escapeHtml(h)}</option>`).join("")}</select></label>
+        <label class="field-block"><div class="field-label">Revisit date</div>
+          <input type="date" id="d-revisit" value="${escapeHtml(c.revisitDate || "")}" /></label>
+        <div class="field-block"><div class="field-label">Rating rubric</div>
+          <p class="rubric-line">${escapeHtml(RATING_RUBRIC[c.rating] || "—")}</p></div>
+      </div>
       <div class="callout callout-rec">
         <div class="callout-title">My recommendation</div>
         <p>${escapeHtml(c.recommendation || "—")}</p>
@@ -1084,6 +1120,13 @@
     document.getElementById("d-goes").addEventListener("change", (e) => {
       c.goesTo = e.target.value; save(); render(); openDrawer(c.id);
     });
+
+    const dFound = document.getElementById("d-found");
+    if (dFound) dFound.addEventListener("change", () => { c.foundBy = dFound.value.trim(); save(); });
+    const dHw = document.getElementById("d-hw");
+    if (dHw) dHw.addEventListener("change", () => { c.hardwareFit = dHw.value; save(); render(); });
+    const dRev = document.getElementById("d-revisit");
+    if (dRev) dRev.addEventListener("change", () => { c.revisitDate = dRev.value; save(); });
     const driveInput = document.getElementById("d-drive-url");
     let driveTimer = null;
     driveInput.addEventListener("input", () => {
@@ -1147,27 +1190,39 @@
       "Add review",
       `<div class="form-grid">
         <label>Title<input id="f-title" required /></label>
-        <label>URL<input id="f-url" type="url" placeholder="https://" /></label>
-        <label>Lane<select id="f-lane">${LANES.map((l) => `<option value="${l.id}">${l.label}</option>`).join("")}</select></label>
+        <label>Reviewed URL<input id="f-url" type="url" placeholder="https://" /></label>
+        <label>Section<select id="f-lane">${LANES.map((l) => `<option value="${l.id}" ${l.id === "inbox" ? "selected" : ""}>${l.label}</option>`).join("")}</select></label>
+        <label>Action<select id="f-action">${ACTIONS.map((a) => `<option value="${a}">${a}</option>`).join("")}</select></label>
         <label>Category<input id="f-cat" placeholder="Tool / Design / API…" /></label>
-        <label>Rating<select id="f-rating">${[5, 4, 3, 2, 1].map((n) => `<option value="${n}">${n} ★</option>`).join("")}</select></label>
-        <label>Recommendation<textarea id="f-rec"></textarea></label>
-        <label>Cherry-pick (one per line)<textarea id="f-cherry"></textarea></label>
         <label>Goes to<select id="f-goes"><option value="">— none —</option>${PROJECTS.map((p) => `<option value="${p}">${p}</option>`).join("")}</select></label>
-        <label>Cursor brief<textarea id="f-brief" rows="4"></textarea></label>
+        <label>Found by<input id="f-found" placeholder="Name or source" /></label>
+        <label>Hardware fit<select id="f-hw">${HARDWARE_FITS.map((h) => `<option value="${h}">${h}</option>`).join("")}</select></label>
+        <label>Revisit date<input id="f-revisit" type="date" /></label>
+        <label>Rating<select id="f-rating">${[5, 4, 3, 2, 1].map((n) => `<option value="${n}">${n} ★ — ${RATING_RUBRIC[n]}</option>`).join("")}</select></label>
+        <label class="full">Recommendation or notes<textarea id="f-rec" placeholder="What should we test, implement, or cherry-pick?"></textarea></label>
+        <label class="full">Cherry-pick (one per line)<textarea id="f-cherry"></textarea></label>
+        <label class="full">Cursor brief<textarea id="f-brief" rows="4"></textarea></label>
+        <p class="form-hint">Rubric: 1 archive · 2 weak reference · 3 useful · 4 test/harvest · 5 strategic fit</p>
       </div>`,
       `<button type="button" class="btn-ghost" id="modal-cancel">Cancel</button>
-       <button type="button" class="btn-gold" id="modal-save">Save review</button>`
+       <button type="button" class="btn-gold" id="modal-save">Add card</button>`
     );
     document.getElementById("modal-cancel").onclick = closeModal;
     document.getElementById("modal-save").onclick = () => {
       const title = document.getElementById("f-title").value.trim();
       if (!title) { toast("Title required"); return; }
+      const url = document.getElementById("f-url").value.trim() || "#";
+      const dup = findCardByUrl(url);
+      if (dup && url !== "#") {
+        toast(`URL already on board — “${dup.title}”`);
+        closeModal();
+        openDrawer(dup.id);
+        return;
+      }
       const cherryRaw = document.getElementById("f-cherry").value;
-      const card = {
-        id: uid("card"), title,
-        url: document.getElementById("f-url").value.trim() || "#",
-        lane: document.getElementById("f-lane").value,
+      const card = normalizeCard({
+        id: uid("card"), title, url,
+        lane: document.getElementById("f-lane").value || "inbox",
         category: document.getElementById("f-cat").value.trim() || "Other",
         rating: Number(document.getElementById("f-rating").value) || 3,
         recommendation: document.getElementById("f-rec").value.trim(),
@@ -1175,10 +1230,14 @@
         gradingSummary: "", relatedNotes: "",
         cursorBrief: document.getElementById("f-brief").value.trim(),
         goesTo: document.getElementById("f-goes").value,
-        promoted: false, favorite: false, action: "evaluate",
+        foundBy: document.getElementById("f-found").value.trim(),
+        hardwareFit: document.getElementById("f-hw").value,
+        revisitDate: document.getElementById("f-revisit").value,
+        promoted: false, favorite: false,
+        action: document.getElementById("f-action").value || "evaluate",
         createdAt: new Date().toISOString(),
         screenshot: null, screenshotDriveUrl: null,
-      };
+      });
       state.cards.unshift(card);
       save(); closeModal(); ui.view = "board"; render(); toast("Review added");
     };
@@ -1262,6 +1321,24 @@
     };
   }
 
+
+  function normalizeUrl(u) {
+    try {
+      const x = new URL(String(u || "").trim());
+      x.hash = "";
+      let path = x.pathname.replace(/\/+$/, "") || "/";
+      return (x.origin + path + x.search).toLowerCase();
+    } catch {
+      return String(u || "").trim().toLowerCase();
+    }
+  }
+
+  function findCardByUrl(url, exceptId) {
+    const key = normalizeUrl(url);
+    if (!key) return null;
+    return state.cards.find((c) => c.id !== exceptId && normalizeUrl(c.url) === key) || null;
+  }
+
   function exportPayload() {
     return {
       version: state.version || 1,
@@ -1277,10 +1354,10 @@
     const blob = new Blob([JSON.stringify(exportPayload(), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `linklabz-forge-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `linklabz-forge-workspace-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    toast("Exported JSON");
+    toast("Workspace downloaded");
   }
 
   function importJson(e) {
@@ -1298,7 +1375,7 @@
         }
         state = next;
         save(); closeDrawer(); render();
-        toast(`Imported · ${state.cards.length} reviews`);
+        toast(`Workspace loaded · ${state.cards.length} reviews`);
       } catch {
         toast("Could not parse JSON");
       }
