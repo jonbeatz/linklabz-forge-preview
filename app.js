@@ -71,7 +71,29 @@
     searchOpen: false,
     todoStatusFilter: "all",
     todoProjectFilter: "",
+    conceptSwapOrder: null,
+    conceptFlowId: null,
+    filtersOpen: false,
+    lab: true,
+    filterLanes: [],
+    filterCategories: [],
+    filterProjects: [],
   };
+
+  const LAB_PREF_KEY = "linklabz-forge-lab-ui";
+
+  function loadLabPref() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LAB_PREF_KEY) || "null");
+      if (raw && typeof raw.lab === "boolean") ui.lab = raw.lab;
+    } catch (_) { /* keep default */ }
+  }
+
+  function saveLabPref() {
+    try {
+      localStorage.setItem(LAB_PREF_KEY, JSON.stringify({ lab: !!ui.lab }));
+    } catch (_) { /* private mode */ }
+  }
 
   /** @type {string|null} */
   let sessionBaseline = null;
@@ -209,6 +231,7 @@
   }
 
   async function init() {
+    loadLabPref();
     const stored = loadFromStorage();
     if (stored && Array.isArray(stored.cards) && stored.cards.length) {
       state = stored;
@@ -373,11 +396,14 @@
     if (ops.lane || ops.project || ops.hardware || ops.found || ops.action || ops.text) {
       list = list.filter((c) => cardMatchesOps(c, ops));
     }
-    if (ui.filterLane) list = list.filter((c) => c.lane === ui.filterLane);
-    if (ui.filterCategory) list = list.filter((c) => c.category === ui.filterCategory);
+    const lanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : []);
+    const cats = (ui.filterCategories && ui.filterCategories.length) ? ui.filterCategories : (ui.filterCategory ? [ui.filterCategory] : []);
+    const projects = (ui.filterProjects && ui.filterProjects.length) ? ui.filterProjects : (ui.filterProject ? [ui.filterProject] : []);
+    if (lanes.length) list = list.filter((c) => lanes.includes(c.lane));
+    if (cats.length) list = list.filter((c) => cats.includes(c.category));
     if (ui.filterPromoted) list = list.filter((c) => c.promoted);
     if (ui.filterFavorites) list = list.filter((c) => c.favorite);
-    if (ui.filterProject) list = list.filter((c) => c.goesTo === ui.filterProject);
+    if (projects.length) list = list.filter((c) => projects.includes(c.goesTo));
 
     if (ui.sort === "rating") {
       list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || a.title.localeCompare(b.title));
@@ -409,17 +435,187 @@
     });
   }
 
+  const dialogStack = [];
+  const FOCUSABLE_SELECTOR = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled]):not([type='hidden'])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+
+  function isFocusable(el) {
+    if (!el || el.closest("[inert]")) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    if (el.closest("[aria-hidden='true']")) return false;
+    const style = window.getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function focusableIn(root) {
+    return [...root.querySelectorAll(FOCUSABLE_SELECTOR)].filter(isFocusable);
+  }
+
+  function partialLockEls() {
+    const roots = [
+      document.querySelector(".island-brand"),
+      document.querySelector(".island-overflow"),
+      document.getElementById("nav"),
+      document.getElementById("board-layout"),
+      document.getElementById("board-surface"),
+      document.getElementById("stats-strip"),
+      document.getElementById("island-filters"),
+    ].filter(Boolean);
+    const tools = [...document.querySelectorAll("#island-tools button, #island-tools input, #island-tools select")]
+      .filter((el) => el.id !== "btn-help");
+    return [...roots, ...tools];
+  }
+
+  function clearPartialLock() {
+    for (const el of partialLockEls()) {
+      el.removeAttribute("inert");
+      if (el.dataset.dialogLock === "1") {
+        el.removeAttribute("aria-hidden");
+        delete el.dataset.dialogLock;
+      }
+    }
+  }
+
+  function applyDialogBackground() {
+    const app = document.getElementById("app");
+    const open = dialogStack.length > 0;
+    document.body.classList.toggle("scroll-lock", open);
+    if (!open) {
+      clearPartialLock();
+      app?.removeAttribute("inert");
+      app?.removeAttribute("aria-hidden");
+      return;
+    }
+    const drawerOnly = dialogStack.every((entry) => entry.el.id === "drawer");
+    if (drawerOnly) {
+      app?.removeAttribute("inert");
+      app?.removeAttribute("aria-hidden");
+      for (const el of partialLockEls()) {
+        el.setAttribute("inert", "");
+        if (!el.dataset.dialogLock) {
+          el.dataset.dialogLock = "1";
+          el.setAttribute("aria-hidden", "true");
+        }
+      }
+      return;
+    }
+    clearPartialLock();
+    if (app) {
+      app.setAttribute("inert", "");
+      app.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function beginDialog(dialogEl, opts = {}) {
+    if (!dialogEl) return;
+    const host = opts.host || dialogEl;
+    const fresh = !dialogStack.some((entry) => entry.el === dialogEl);
+    host.removeAttribute("inert");
+    dialogEl.removeAttribute("inert");
+    dialogEl.setAttribute("aria-modal", "true");
+    dialogEl.setAttribute("aria-hidden", "false");
+    if (!fresh) return;
+    dialogStack.push({
+      el: dialogEl,
+      host,
+      prevFocus: document.activeElement,
+      close: typeof opts.close === "function" ? opts.close : null,
+    });
+    const picked = typeof opts.initial === "function" ? opts.initial() : opts.initial;
+    const target = (picked && dialogEl.contains(picked) && picked) || focusableIn(dialogEl)[0] || dialogEl;
+    if (typeof target.focus === "function") target.focus();
+    applyDialogBackground();
+    requestAnimationFrame(() => {
+      if (dialogStack[dialogStack.length - 1]?.el !== dialogEl) return;
+      if (dialogEl.contains(document.activeElement)) return;
+      if (typeof target.focus === "function") target.focus();
+    });
+  }
+
+  function endDialog(dialogEl) {
+    if (!dialogEl) return;
+    const idx = dialogStack.findIndex((entry) => entry.el === dialogEl);
+    if (idx < 0) {
+      dialogEl.setAttribute("aria-hidden", "true");
+      dialogEl.setAttribute("inert", "");
+      return;
+    }
+    const [entry] = dialogStack.splice(idx, 1);
+    applyDialogBackground();
+    const top = dialogStack[dialogStack.length - 1];
+    const prev = entry.prevFocus;
+    if (top) {
+      const next = (prev && top.el.contains(prev) && prev) || focusableIn(top.el)[0] || top.el;
+      if (typeof next.focus === "function") next.focus();
+    } else if (prev && document.contains(prev)) {
+      prev.focus();
+    } else {
+      document.getElementById("canvas")?.focus();
+    }
+    dialogEl.setAttribute("aria-hidden", "true");
+    const host = entry.host || dialogEl;
+    host.setAttribute("inert", "");
+    if (host !== dialogEl) dialogEl.setAttribute("inert", "");
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || !dialogStack.length) return;
+    const top = dialogStack[dialogStack.length - 1].el;
+    const nodes = focusableIn(top);
+    if (!nodes.length) {
+      e.preventDefault();
+      top.focus();
+      return;
+    }
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !top.contains(active)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !top.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, true);
+
   function openPalette() {
     ui.paletteOpen = true;
     ui.paletteQuery = "";
     ui.paletteIndex = 0;
     const backdrop = document.getElementById("palette-backdrop");
+    const palette = document.getElementById("palette");
     const input = document.getElementById("palette-input");
     backdrop.classList.add("open");
-    backdrop.setAttribute("aria-hidden", "false");
     input.value = "";
     renderPaletteResults();
-    requestAnimationFrame(() => input.focus());
+    beginDialog(palette, { host: backdrop, initial: input, close: closePalette });
+  }
+
+  function openHelp() {
+    const backdrop = document.getElementById("help-backdrop");
+    const help = document.getElementById("help");
+    const already = dialogStack.some((entry) => entry.el === help);
+    backdrop.classList.add("open");
+    beginDialog(help, {
+      host: backdrop,
+      initial: document.getElementById("help-close"),
+      close: closeHelp,
+    });
+    if (!already) toast("Opened Forge reference · Esc to close");
+  }
+
+  function closeHelp() {
+    document.getElementById("help-backdrop").classList.remove("open");
+    endDialog(document.getElementById("help"));
   }
 
   function closePalette() {
@@ -427,12 +623,13 @@
     ui.paletteItems = [];
     const backdrop = document.getElementById("palette-backdrop");
     backdrop.classList.remove("open");
-    backdrop.setAttribute("aria-hidden", "true");
+    endDialog(document.getElementById("palette"));
   }
 
   function applyLaneFilter(lane) {
     ui.view = "board";
     ui.filterLane = lane;
+    ui.filterLanes = lane ? [lane] : [];
     syncFilterChrome();
     render();
     toast(lane ? `Lane filter → ${LANES.find((l) => l.id === lane)?.label || lane}` : "All lanes");
@@ -551,13 +748,28 @@
         run: () => { ui.view = "todo"; render(); openAddTodoModal(); } },
       { id: "qa-export", label: "Download workspace", icon: "↓", keys: "export json download workspace", run: () => exportJson() },
       { id: "qa-toggle-layout",
-        label: ui.layout === "sections" ? "Toggle layout → Bento" : "Toggle layout → Lanes",
-        icon: "⧉", keys: "toggle grid sections layout bento lanes",
+        label: "Cycle board layout",
+        icon: "⧉", keys: "toggle grid sections layout bento lanes cover browse",
         run: () => {
-          ui.layout = ui.layout === "sections" ? "grid" : "sections";
+          const order = ui.lab ? ["sections", "grid", "cover", "band", "coast"] : ["sections", "grid", "cover"];
+          const names = { sections: "Lanes", grid: "Bento", cover: "Cover", band: "Band", coast: "Coast" };
+          const i = Math.max(0, order.indexOf(ui.layout));
+          ui.layout = order[(i + 1) % order.length];
           syncFilterChrome(); ui.view = "board"; render();
-          toast(`Layout → ${ui.layout === "sections" ? "Lanes" : "Bento"}`);
+          toast(`Layout → ${names[ui.layout] || ui.layout}`);
         } },
+      { id: "qa-layout-cover",
+        label: "Board layout → Cover",
+        icon: "⧉", keys: "cover flow browse",
+        run: () => {
+          ui.layout = "cover";
+          syncFilterChrome(); ui.view = "board"; render();
+          toast("Layout → Cover");
+        } },
+      { id: "qa-card-swap",
+        label: "Card Swap",
+        icon: "⇄", keys: "card swap spotlight tools stack",
+        run: () => jumpToCardSwap() },
     ];
     for (const a of actions) {
       if (match(a.label) || match(a.keys)) {
@@ -675,10 +887,14 @@
   function clearFilters() {
     ui.filterLane = "";
     ui.filterCategory = "";
+    ui.filterLanes = [];
+    ui.filterCategories = [];
+    ui.filterProjects = [];
     ui.filterPromoted = false;
     ui.filterFavorites = false;
     ui.filterProject = "";
     ui.filterBookmarkType = "";
+    ui.filtersOpen = false;
     ui.todoStatusFilter = "all";
     ui.todoProjectFilter = "";
     ui.search = "";
@@ -726,11 +942,13 @@
 
     document.getElementById("filter-lane").addEventListener("change", (e) => {
       ui.filterLane = e.target.value;
+      ui.filterLanes = e.target.value ? [e.target.value] : [];
       renderCanvas();
       updateCounts();
     });
     document.getElementById("filter-category").addEventListener("change", (e) => {
       ui.filterCategory = e.target.value;
+      ui.filterCategories = e.target.value ? [e.target.value] : [];
       renderCanvas();
     });
     document.getElementById("filter-promoted").addEventListener("click", () => {
@@ -760,6 +978,7 @@
       const chip = e.target.closest("[data-project]");
       if (!chip) return;
       ui.filterProject = chip.dataset.project;
+      ui.filterProjects = chip.dataset.project ? [chip.dataset.project] : [];
       renderProjectStrip();
       renderCanvas();
     });
@@ -772,6 +991,15 @@
     });
 
     document.getElementById("btn-cmd-palette").addEventListener("click", openPalette);
+    document.getElementById("btn-help").addEventListener("click", openHelp);
+    document.getElementById("btn-filters").addEventListener("click", () => {
+      ui.filtersOpen = !ui.filtersOpen;
+      render();
+    });
+    document.getElementById("help-close").addEventListener("click", closeHelp);
+    document.getElementById("help-backdrop").addEventListener("click", (e) => {
+      if (e.target.id === "help-backdrop") closeHelp();
+    });
 
     const moreBtn = document.getElementById("btn-more");
     const moreDrop = document.getElementById("more-dropdown");
@@ -841,6 +1069,7 @@
         runPaletteItem(ui.paletteIndex);
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         closePalette();
       }
     });
@@ -858,11 +1087,17 @@
         return;
       }
       if (e.key === "Escape") {
-        if (ui.paletteOpen) { closePalette(); return; }
-        if (document.getElementById("modal-backdrop").classList.contains("open")) {
-          closeModal(); return;
+        const top = dialogStack[dialogStack.length - 1];
+        const helpEntry = dialogStack.find((entry) => entry.el.id === "help");
+        if (top?.el?.id === "drawer" && helpEntry?.close) {
+          e.preventDefault();
+          helpEntry.close();
+          return;
         }
-        if (ui.drawerId) closeDrawer();
+        if (top?.close) {
+          e.preventDefault();
+          top.close();
+        }
       }
     });
   }
@@ -878,6 +1113,25 @@
     const showBoardChrome = ui.view === "board";
     boardFilters.classList.toggle("hidden", !showBoardChrome);
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
+    const boardLayout = document.getElementById("board-layout");
+    if (boardLayout) boardLayout.classList.toggle("hidden", !showBoardChrome);
+    const filtersActive = !!(
+      ui.filterLane || (ui.filterLanes && ui.filterLanes.length) ||
+      ui.filterCategory || (ui.filterCategories && ui.filterCategories.length) ||
+      ui.filterPromoted || ui.filterFavorites ||
+      ui.filterProject || (ui.filterProjects && ui.filterProjects.length)
+    );
+    const showFilterPanel = (ui.filtersOpen || filtersActive) && (showBoardChrome || ui.view === "favorites");
+    document.getElementById("island").classList.toggle("filters-open", showFilterPanel);
+    const filtersBtn = document.getElementById("btn-filters");
+    if (filtersBtn) {
+      const showFiltersBtn = showBoardChrome || ui.view === "favorites";
+      filtersBtn.classList.toggle("hidden", !showFiltersBtn);
+      filtersBtn.setAttribute("aria-expanded", String(showFilterPanel));
+      filtersBtn.classList.toggle("on", showFilterPanel);
+    }
+    const metrics = document.getElementById("stats-strip");
+    if (metrics) metrics.classList.toggle("hidden", !showBoardChrome);
 
     search.placeholder =
       ui.view === "board" ? "Search… lane:try project:reWavz hardware:rtx"
@@ -910,6 +1164,7 @@
     renderCanvas();
     updateCounts();
     if (ui.drawerId && !getCard(ui.drawerId)) closeDrawer();
+    if (window.ForgeLab && window.ForgeLab.afterRender) window.ForgeLab.afterRender();
   }
 
   function renderProjectStrip() {
@@ -945,6 +1200,7 @@
   }
 
   function renderCanvas() {
+    stopConceptMotion();
     const canvas = document.getElementById("canvas");
     if (ui.view === "board") canvas.innerHTML = renderBoard();
     else if (ui.view === "bookmarks") canvas.innerHTML = renderBookmarks();
@@ -955,45 +1211,859 @@
     wireCanvasEvents(canvas);
   }
 
+  function monogram(title) {
+    const parts = String(title || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "·";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   function cardEl(c) {
     const cherries = Array.isArray(c.cherryPick) ? c.cherryPick : [];
+    const favLabel = `${c.favorite ? "Unfavorite" : "Favorite"} ${c.title}`;
+    const tags = [];
+    if (c.category) tags.push(`<span class="badge cat">${escapeHtml(c.category)}</span>`);
+    if (c.goesTo) tags.push(`<span class="badge goes">${escapeHtml(c.goesTo)}</span>`);
+    if (cherries.length) tags.push(`<span class="badge">${cherries.length} cherry-pick${cherries.length > 1 ? "s" : ""}</span>`);
+    const shown = tags.slice(0, 2).join("");
+    const extra = tags.length - 2;
+    const more = extra > 0 ? `<span class="badge more" title="${extra} more">+${extra}</span>` : "";
+    const shot = screenshotSrc(c);
+    const mono = monogram(c.title);
+    const thumb = shot
+      ? `<img src="${escapeHtml(shot)}" alt="" />`
+      : `<span class="monogram">${escapeHtml(mono)}</span>`;
+    const holo = ui.lab && (c.lane === "try" || Number(c.rating) >= 4.8);
     return `
-      <article class="card" tabindex="0" data-card-id="${escapeHtml(c.id)}" role="button" aria-label="Open ${escapeHtml(c.title)}">
+      <article class="card${c.promoted ? " is-promoted" : ""}${holo ? " is-holo" : ""}">
+        <div class="card-thumb" data-mono="${escapeHtml(mono)}" aria-hidden="true">${thumb}</div>
         <div class="card-top">
-          <h3 class="card-title">${escapeHtml(c.title)}</h3>
+          <h3 class="card-title"><button type="button" class="card-open" data-card-id="${escapeHtml(c.id)}" aria-label="Open ${escapeHtml(c.title)}">${escapeHtml(c.title)}</button></h3>
           ${c.protected ? `<span class="badge lock" title="Protected seed">🔒</span>` : ""}
-          <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="Toggle favorite" title="Favorite">${c.favorite ? "★" : "☆"}</button>
+          <button type="button" class="card-more" data-card-menu="${escapeHtml(c.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${escapeHtml(c.title)}">⋯</button>
+          <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="${escapeHtml(favLabel)}" title="Favorite">${c.favorite ? "★" : "☆"}</button>
         </div>
         <div class="card-meta">
           ${starsHtml(c.rating)}
-          <span class="badge cat">${escapeHtml(c.category || "—")}</span>
-          ${c.promoted ? `<span class="badge promoted">Promoted</span>` : ""}
-          ${c.goesTo ? `<span class="badge goes">${escapeHtml(c.goesTo)}</span>` : ""}
+          ${shown}
+          ${more}
         </div>
         <p class="card-rec">${escapeHtml(c.recommendation || "")}</p>
         <div class="card-footer">
           ${c.action ? `<span class="action-label">${escapeHtml(c.action)}</span>` : ""}
-          ${cherries.length ? `<span class="badge">${cherries.length} cherry-pick${cherries.length > 1 ? "s" : ""}</span>` : ""}
         </div>
       </article>`;
   }
 
+  /* GodUI-inspired test layouts (vanilla CSS transforms + rAF). Not the production board. */
+  let conceptCleanups = [];
+
+  function stopConceptMotion() {
+    for (const fn of conceptCleanups) {
+      try { fn(); } catch (_) { /* teardown is best-effort */ }
+    }
+    conceptCleanups = [];
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function jumpToCardSwap() {
+    ui.view = "tools";
+    closeDrawer();
+    render();
+    const reduce = prefersReducedMotion();
+    requestAnimationFrame(() => {
+      const block = document.getElementById("card-swap");
+      if (!block) return;
+      block.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      const stage = block.querySelector("[data-card-swap]");
+      const target = stage || block;
+      if (typeof target.focus === "function") target.focus({ preventScroll: true });
+    });
+  }
+
+  function urlHost(url) {
+    const raw = String(url || "").trim();
+    if (!raw || raw === "#") return "no link";
+    try {
+      return new URL(raw).host.replace(/^www\./, "");
+    } catch {
+      return raw.replace(/^https?:\/\//i, "").split("/")[0] || "link";
+    }
+  }
+
+  function laneName(id) {
+    return LANES.find((l) => l.id === id)?.label || "Inbox";
+  }
+
+  function coverDeck() {
+    const all = filteredCards();
+    const preferred = all.filter((c) => c.lane === "try" || c.promoted || c.favorite);
+    return { cards: preferred.length ? preferred : all, preferred: preferred.length > 0 };
+  }
+
+  function cardSwapCards() {
+    return state.cards
+      .filter((c) => c.lane === "try")
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(a.title).localeCompare(String(b.title)))
+      .slice(0, 3);
+  }
+
+  function ratingBits(c) {
+    const n = Number(c.rating);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    const label = Number.isInteger(n) ? String(n) : n.toFixed(1);
+    return `${starsHtml(n)}<span class="concept-rating">${escapeHtml(label)}</span>`;
+  }
+
+  function conceptFace(c) {
+    const recommendation = String(c.recommendation || c.gradingSummary || "").trim();
+    const action = String(c.action || "").trim();
+    const rate = ratingBits(c);
+    return `
+      <div class="concept-card-face">
+        <div class="concept-card-top">
+          <span class="badge lane-chip ${escapeHtml(c.lane || "inbox")}">${escapeHtml(laneName(c.lane))}</span>
+          ${action ? `<span class="action-label">${escapeHtml(action)}</span>` : ""}
+        </div>
+        <p class="concept-title">${escapeHtml(c.title)}</p>
+        ${rate ? `<div class="concept-rate">${rate}</div>` : ""}
+        <p class="concept-snippet">${escapeHtml(recommendation || "No recommendation yet.")}</p>
+        <p class="concept-host">${escapeHtml(urlHost(c.url))}</p>
+      </div>`;
+  }
+
+  function renderCardSwap(list) {
+    const cards = list.map((c) => `
+      <div class="swap-card" data-swap-card data-review-id="${escapeHtml(c.id)}" data-title="${escapeHtml(c.title)}">
+        <button type="button" class="concept-hit">${conceptFace(c)}</button>
+      </div>`).join("");
+    return `
+      <section class="concept-block card-swap-block" id="card-swap" tabindex="-1" aria-labelledby="card-swap-title">
+        <div class="concept-block-head">
+          <h3 id="card-swap-title">${brandTitle("Card Swap")}</h3>
+          <span class="concept-test-badge">Experimental</span>
+          <p>Manual stack of the top Try It reviews. Arrows only — not a board mode.</p>
+        </div>
+        <div class="swap-stage" data-card-swap data-swap-interval="0" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Card Swap">
+          <p class="sr-only" data-swap-live aria-live="polite"></p>
+          <div class="swap-row">
+            <button type="button" class="concept-nav" data-swap-prev aria-label="Previous card">‹</button>
+            <div class="swap-perspective">
+              <div class="swap-tilt">${cards}</div>
+            </div>
+            <button type="button" class="concept-nav" data-swap-next aria-label="Next card">›</button>
+          </div>
+          <div class="concept-count" data-swap-count>1 / ${list.length}</div>
+        </div>
+      </section>`;
+  }
+
+  function renderCoverFlow(list) {
+    const slides = list.map((c, i) => `
+      <div class="flow-item" data-flow-index="${i}" data-review-id="${escapeHtml(c.id)}" data-title="${escapeHtml(c.title)}">
+        <button type="button" class="concept-hit">${conceptFace(c)}</button>
+      </div>`).join("");
+    return `
+      <section class="concept-block cover-board" id="concept-flow" aria-label="Cover browse">
+        <p class="cover-note"><span class="concept-test-badge">Experimental</span> Snap a card to center to open it in the detail drawer. Arrow keys move between cards.</p>
+        <div class="flow-wrap" data-cover-flow>
+          <p class="sr-only" data-flow-live aria-live="polite"></p>
+          <div class="flow-stage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Cover flow">${slides}</div>
+          <div class="concept-controls">
+            <button type="button" class="concept-nav" data-flow-prev aria-label="Previous slide">‹</button>
+            <span class="concept-count" data-flow-count>1 / ${list.length}</span>
+            <button type="button" class="concept-nav" data-flow-next aria-label="Next slide">›</button>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function mountConceptLayouts(canvas) {
+    const swap = canvas.querySelector("[data-card-swap]");
+    const flow = canvas.querySelector("[data-cover-flow]");
+    if (swap) mountCardSwap(swap);
+    if (flow) mountCoverFlow(flow);
+  }
+
+  function mountCardSwap(root) {
+    const reduce = prefersReducedMotion();
+    const cards = [...root.querySelectorAll("[data-swap-card]")];
+    const n = cards.length;
+    const prevBtn = root.querySelector("[data-swap-prev]");
+    const nextBtn = root.querySelector("[data-swap-next]");
+    const countEl = root.querySelector("[data-swap-count]");
+    const live = root.querySelector("[data-swap-live]");
+    const tilt = root.querySelector(".swap-tilt");
+    if (!n || !tilt) return;
+
+    const OFFSET_X = 22;
+    const OFFSET_Y = 28;
+    const ROT_STEP = 2.5;
+    const SCALE_STEP = 0.06;
+    const ids = cards.map((el) => el.dataset.reviewId);
+    let order = ids.map((_, i) => i);
+    if (Array.isArray(ui.conceptSwapOrder) && ui.conceptSwapOrder.length) {
+      const saved = ui.conceptSwapOrder.filter((id) => ids.includes(id));
+      const rest = ids.filter((id) => !saved.includes(id));
+      const seq = [...saved, ...rest];
+      if (seq.length === n) order = seq.map((id) => ids.indexOf(id));
+    }
+
+    let paused = false;
+    let hovering = false;
+    let focused = false;
+    let timer = 0;
+    let tiltRaf = 0;
+    let tx = 0;
+    let ty = 0;
+    let gx = 0;
+    let gy = 0;
+
+    function remember() {
+      ui.conceptSwapOrder = order.map((i) => ids[i]);
+    }
+
+    function stopTimer() {
+      if (timer) clearInterval(timer);
+      timer = 0;
+    }
+
+    function startTimer() {
+      stopTimer();
+    }
+
+    function tiltEnabled() {
+      return !prefersReducedMotion() && window.innerWidth >= 768;
+    }
+
+    function syncPause() {
+      const next = hovering || focused;
+      if (next === paused) return;
+      paused = next;
+      if (paused) stopTimer();
+      else startTimer();
+    }
+
+    function fanSpread() {
+      if (reduce) return { offsetX: 0, offsetY: 0, rot: 0 };
+      const narrow = window.innerWidth < 768;
+      let offsetX = OFFSET_X;
+      let rot = ROT_STEP;
+      if (!narrow || !prevBtn || !nextBtn) return { offsetX, offsetY: OFFSET_Y, rot };
+      const box = tilt.parentElement.getBoundingClientRect();
+      const prevBox = prevBtn.getBoundingClientRect();
+      const nextBox = nextBtn.getBoundingClientRect();
+      if (!box.width || !nextBox.width) return { offsetX: 10, offsetY: OFFSET_Y, rot: 1.25 };
+      const gutter = Math.min(nextBox.left - box.right, box.left - prevBox.right);
+      const room = Math.max(0, gutter - 6);
+      const halfW = box.width / 2;
+      const halfH = box.height / 2;
+      const rank = Math.max(1, n - 1);
+      function fits(off, rotDeg) {
+        const scale = 1 - rank * SCALE_STEP;
+        const rad = (rotDeg * rank * Math.PI) / 180;
+        const extent = halfW * scale * Math.cos(rad) + halfH * scale * Math.sin(Math.abs(rad));
+        const x = rank * off;
+        const right = x + extent - halfW;
+        const left = extent - x - halfW;
+        return right <= room + 0.5 && left <= room + 0.5;
+      }
+      if (!fits(offsetX, rot)) {
+        let lo = 0;
+        let hi = offsetX;
+        for (let i = 0; i < 14; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(mid, rot)) lo = mid;
+          else hi = mid;
+        }
+        offsetX = lo;
+        if (!fits(offsetX, rot)) {
+          let rlo = 0;
+          let rhi = rot;
+          for (let i = 0; i < 14; i++) {
+            const mid = (rlo + rhi) / 2;
+            if (fits(0, mid)) rlo = mid;
+            else rhi = mid;
+          }
+          rot = rlo;
+          lo = 0;
+          hi = OFFSET_X;
+          for (let i = 0; i < 14; i++) {
+            const mid = (lo + hi) / 2;
+            if (fits(mid, rot)) lo = mid;
+            else hi = mid;
+          }
+          offsetX = lo;
+        }
+      }
+      return { offsetX, offsetY: OFFSET_Y, rot };
+    }
+
+    function apply(fromUser) {
+      const fan = fanSpread();
+      const rankOf = new Array(n);
+      order.forEach((itemIndex, rank) => { rankOf[itemIndex] = rank; });
+      const activeEl = document.activeElement;
+      cards.forEach((el, i) => {
+        const r = rankOf[i] ?? 0;
+        const btn = el.querySelector(".concept-hit");
+        const x = r * fan.offsetX;
+        const y = -r * fan.offsetY;
+        const scale = 1 - r * SCALE_STEP;
+        el.style.zIndex = String(n - r);
+        el.style.pointerEvents = r === 0 ? "auto" : "none";
+        if (reduce) {
+          el.style.transition = "none";
+          el.style.transform = "none";
+          el.style.opacity = r === 0 ? "1" : "0";
+        } else {
+          el.style.transition = "transform 620ms cubic-bezier(0.22, 1.15, 0.36, 1), opacity 420ms ease";
+          el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${r * -fan.rot}deg) scale(${scale})`;
+          el.style.opacity = r > 4 ? "0" : "1";
+        }
+        el.classList.toggle("is-front", r === 0);
+        el.setAttribute("aria-hidden", r === 0 ? "false" : "true");
+        if (btn) {
+          btn.tabIndex = r === 0 ? 0 : -1;
+          const title = el.dataset.title || "Review";
+          btn.setAttribute("aria-label", r === 0 ? `Open ${title}` : title);
+        }
+      });
+      const front = order[0];
+      if (countEl) countEl.textContent = `${front + 1} / ${n}`;
+      if (prevBtn) prevBtn.disabled = n < 2;
+      if (nextBtn) nextBtn.disabled = n < 2;
+      remember();
+      if (fromUser && live) {
+        live.textContent = `${cards[front].dataset.title || "Review"}, ${front + 1} of ${n}`;
+      }
+      if (
+        fromUser &&
+        activeEl &&
+        activeEl.classList.contains("concept-hit") &&
+        root.contains(activeEl)
+      ) {
+        const frontBtn = cards[front].querySelector(".concept-hit");
+        if (frontBtn) frontBtn.focus();
+      }
+    }
+
+    function advance(fromUser) {
+      if (n < 2) return;
+      order = [...order.slice(1), order[0]];
+      apply(fromUser);
+    }
+
+    function retreat(fromUser) {
+      if (n < 2) return;
+      order = [order[order.length - 1], ...order.slice(0, -1)];
+      apply(fromUser);
+    }
+
+    function tiltTick() {
+      tx += (gx - tx) * 0.18;
+      ty += (gy - ty) * 0.18;
+      tilt.style.transform = `rotateX(${tx.toFixed(2)}deg) rotateY(${ty.toFixed(2)}deg)`;
+      if (Math.abs(gx - tx) > 0.05 || Math.abs(gy - ty) > 0.05) {
+        tiltRaf = requestAnimationFrame(tiltTick);
+      } else {
+        tilt.style.transform = `rotateX(${gx}deg) rotateY(${gy}deg)`;
+        tiltRaf = 0;
+      }
+    }
+
+    function kickTilt() {
+      if (!tiltEnabled()) return;
+      if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltTick);
+    }
+
+    function onPointerMove(e) {
+      if (!tiltEnabled() || e.pointerType === "touch") {
+        gx = 0;
+        gy = 0;
+        tilt.style.transform = "none";
+        return;
+      }
+      const rect = root.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      gx = -py * 12;
+      gy = px * 14;
+      kickTilt();
+    }
+
+    function onPointerEnter(e) {
+      if (e.pointerType === "touch") return;
+      hovering = true;
+      syncPause();
+    }
+
+    function onPointerLeave(e) {
+      if (e.pointerType === "touch") return;
+      hovering = false;
+      gx = 0;
+      gy = 0;
+      kickTilt();
+      syncPause();
+    }
+
+    function onFocusIn() {
+      focused = true;
+      syncPause();
+    }
+
+    function onFocusOut(e) {
+      if (root.contains(e.relatedTarget)) return;
+      focused = false;
+      syncPause();
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        retreat(true);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        advance(true);
+      } else if ((e.key === "Enter" || e.key === " ") && e.target === root) {
+        e.preventDefault();
+        openDrawer(cards[order[0]].dataset.reviewId);
+      }
+    }
+
+    function onPrev(e) {
+      e.stopPropagation();
+      retreat(true);
+    }
+
+    function onNext(e) {
+      e.stopPropagation();
+      advance(true);
+    }
+
+    cards.forEach((el) => {
+      const btn = el.querySelector(".concept-hit");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        if (el !== cards[order[0]]) return;
+        openDrawer(el.dataset.reviewId);
+      });
+    });
+
+    function onVisibility() {
+      if (!document.hidden) return;
+      if (tiltRaf) cancelAnimationFrame(tiltRaf);
+      tiltRaf = 0;
+      gx = 0;
+      gy = 0;
+      tx = 0;
+      ty = 0;
+      tilt.style.transform = "none";
+    }
+
+    function onResize() {
+      apply(false);
+    }
+
+    root.addEventListener("pointermove", onPointerMove);
+    root.addEventListener("pointerenter", onPointerEnter);
+    root.addEventListener("pointerleave", onPointerLeave);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    root.addEventListener("keydown", onKeyDown);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("resize", onResize);
+    if (prevBtn) prevBtn.addEventListener("click", onPrev);
+    if (nextBtn) nextBtn.addEventListener("click", onNext);
+
+    apply(false);
+
+    conceptCleanups.push(() => {
+      stopTimer();
+      if (tiltRaf) cancelAnimationFrame(tiltRaf);
+      root.removeEventListener("pointermove", onPointerMove);
+      root.removeEventListener("pointerenter", onPointerEnter);
+      root.removeEventListener("pointerleave", onPointerLeave);
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("focusout", onFocusOut);
+      root.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("resize", onResize);
+      if (prevBtn) prevBtn.removeEventListener("click", onPrev);
+      if (nextBtn) nextBtn.removeEventListener("click", onNext);
+    });
+  }
+
+  function mountCoverFlow(wrap) {
+    const reduce = prefersReducedMotion();
+    const stage = wrap.querySelector(".flow-stage");
+    const items = [...wrap.querySelectorAll(".flow-item")];
+    const prevBtn = wrap.querySelector("[data-flow-prev]");
+    const nextBtn = wrap.querySelector("[data-flow-next]");
+    const countEl = wrap.querySelector("[data-flow-count]");
+    const live = wrap.querySelector("[data-flow-live]");
+    const count = items.length;
+    if (!stage || !count) return;
+
+    const ids = items.map((el) => el.dataset.reviewId);
+    let index = Math.min(2, count - 1);
+    if (ui.conceptFlowId) {
+      const found = ids.indexOf(ui.conceptFlowId);
+      if (found >= 0) index = found;
+    }
+    let pos = index;
+    let target = index;
+    let vel = 0;
+    let running = false;
+    let raf = 0;
+    let last = 0;
+    let dragging = false;
+    let spacing = 200;
+    let booted = false;
+    let announced = -1;
+    let primed = false;
+    let openOnSettle = false;
+
+    function clampIndex(v) {
+      return Math.max(0, Math.min(count - 1, v));
+    }
+
+    function measure() {
+      const narrow = window.innerWidth < 768;
+      const parent = wrap.parentElement || wrap;
+      const avail = parent.clientWidth || window.innerWidth;
+      let itemW = 260;
+      if (narrow) itemW = Math.round(Math.min(300, Math.max(210, avail * 0.82)));
+      const itemH = Math.round(itemW * (320 / 260));
+      const stageW = narrow ? avail : Math.min(avail, Math.round(itemW * 3));
+      const stageH = itemH + (narrow ? 36 : 56);
+      stage.style.width = narrow ? "100%" : `${stageW}px`;
+      stage.style.height = `${stageH}px`;
+      if (!reduce) stage.style.perspective = "1200px";
+      else stage.style.perspective = "none";
+      items.forEach((el) => {
+        el.style.width = `${itemW}px`;
+        el.style.height = `${itemH}px`;
+        el.style.marginLeft = `${-itemW / 2}px`;
+        el.style.marginTop = `${-itemH / 2}px`;
+        el.style.top = "50%";
+      });
+      spacing = itemW * 0.72 + 16;
+    }
+
+    function placement(offset) {
+      const sign = Math.sign(offset) || 0;
+      const abs = Math.abs(offset);
+      if (reduce) {
+        return {
+          x: 0,
+          rotateY: 0,
+          z: 0,
+          scale: 1,
+          opacity: abs < 0.45 ? 1 : 0,
+        };
+      }
+      const near = Math.min(abs, 1);
+      const far = Math.max(abs - 1, 0);
+      return {
+        x: sign * (near * spacing + far * spacing * 0.55),
+        rotateY: -Math.max(-1, Math.min(1, offset)) * 52,
+        z: -Math.min(abs, 3) * 130,
+        scale: 1 - Math.min(abs, 3) * 0.08,
+        opacity: abs > 3.4 ? 0 : Math.max(0.15, 1 - Math.max(abs - 1, 0) * 0.28),
+      };
+    }
+
+    function layout() {
+      items.forEach((el, i) => {
+        const offset = i - pos;
+        const abs = Math.abs(offset);
+        const p = placement(offset);
+        el.style.transition = reduce && primed ? "opacity 180ms linear" : "none";
+        el.style.transform = reduce
+          ? "translate3d(0, 0, 0)"
+          : `translate3d(${p.x}px, 0, ${p.z}px) rotateY(${p.rotateY}deg) scale(${p.scale})`;
+        el.style.opacity = String(p.opacity);
+        el.style.zIndex = String(Math.round(100 - abs * 10));
+        el.style.pointerEvents = p.opacity < 0.08 ? "none" : "auto";
+        el.classList.toggle("is-front", abs < 0.45);
+      });
+      primed = true;
+    }
+
+    function syncChrome(announce) {
+      items.forEach((el, i) => {
+        const btn = el.querySelector(".concept-hit");
+        const title = el.dataset.title || "Review";
+        const on = i === index;
+        if (!btn) return;
+        btn.tabIndex = on ? 0 : -1;
+        btn.setAttribute("aria-label", on ? `Open ${title}` : `Show ${title}`);
+        el.setAttribute("aria-hidden", reduce && !on ? "true" : "false");
+      });
+      if (prevBtn) prevBtn.disabled = index <= 0;
+      if (nextBtn) nextBtn.disabled = index >= count - 1;
+      if (countEl) countEl.textContent = `${index + 1} / ${count}`;
+      ui.conceptFlowId = ids[index];
+      if (!announce || announced === index) return;
+      announced = index;
+      if (booted && live) {
+        live.textContent = `${items[index].dataset.title || "Review"}, ${index + 1} of ${count}`;
+      }
+    }
+
+    function stopSpring() {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    function tick(now) {
+      if (!running) return;
+      const dt = Math.min(0.032, (now - last) / 1000) || 0.016;
+      last = now;
+      const acc = (-320 * (pos - target) - 32 * vel) / 0.9;
+      vel += acc * dt;
+      pos += vel * dt;
+      if (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02) {
+        pos = target;
+        vel = 0;
+        running = false;
+        layout();
+        syncChrome(true);
+        if (openOnSettle) {
+          openOnSettle = false;
+          openDrawer(ids[index]);
+        }
+        return;
+      }
+      layout();
+      raf = requestAnimationFrame(tick);
+    }
+
+    function finishGo() {
+      layout();
+      syncChrome(true);
+      if (openOnSettle) {
+        openOnSettle = false;
+        openDrawer(ids[index]);
+      }
+    }
+
+    function goTo(i, immediate, openOnSnap) {
+      index = clampIndex(i);
+      target = index;
+      ui.conceptFlowId = ids[index];
+      openOnSettle = !!(openOnSnap && booted);
+      if (immediate || reduce || (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02)) {
+        stopSpring();
+        pos = target;
+        vel = 0;
+        finishGo();
+        return;
+      }
+      if (!running) {
+        running = true;
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    }
+
+    let startX = 0;
+    let startPos = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;
+    let dragMoved = 0;
+    let downItem = null;
+
+    function onPointerDown(e) {
+      if (e.button != null && e.button !== 0) return;
+      dragging = true;
+      dragMoved = 0;
+      downItem = e.target.closest?.(".flow-item") || null;
+      startX = lastX = e.clientX;
+      startPos = pos;
+      lastT = performance.now();
+      velocity = 0;
+      stopSpring();
+      vel = 0;
+      stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    }
+
+    function onPointerMove(e) {
+      if (!dragging) return;
+      const now = performance.now();
+      const dx = e.clientX - startX;
+      dragMoved = Math.max(dragMoved, Math.abs(dx));
+      const inst = (e.clientX - lastX) / Math.max(8, now - lastT);
+      velocity = velocity * 0.55 + inst * 0.45;
+      lastX = e.clientX;
+      lastT = now;
+      let raw = startPos - dx / spacing;
+      if (raw < 0) raw *= 0.35;
+      else if (raw > count - 1) raw = (count - 1) + (raw - (count - 1)) * 0.35;
+      pos = raw;
+      layout();
+      if (dragMoved > 6) e.preventDefault();
+    }
+
+    let ignoreClickUntil = 0;
+
+    function finishDrag() {
+      if (!dragging) return;
+      dragging = false;
+      stage.classList.remove("is-dragging");
+      const item = downItem;
+      downItem = null;
+      if (dragMoved < 8) {
+        ignoreClickUntil = performance.now() + 400;
+        if (item) {
+          const i = Number(item.dataset.flowIndex);
+          if (i === index) openDrawer(item.dataset.reviewId);
+          else goTo(i, reduce, true);
+        }
+        return;
+      }
+      ignoreClickUntil = performance.now() + 80;
+      let dest = Math.round(pos);
+      if (Math.abs(velocity) > 0.6) dest -= Math.sign(velocity);
+      dest = clampIndex(dest);
+      goTo(dest, reduce, dest !== index);
+    }
+
+    function onPointerUp() { finishDrag(); }
+    function onPointerCancel() {
+      if (!dragging) return;
+      dragging = false;
+      downItem = null;
+      stage.classList.remove("is-dragging");
+      goTo(Math.round(pos), reduce);
+    }
+
+    function onClick(e) {
+      const item = e.target.closest(".flow-item");
+      if (!item || !wrap.contains(item)) return;
+      if (performance.now() < ignoreClickUntil) {
+        e.preventDefault();
+        return;
+      }
+      const i = Number(item.dataset.flowIndex);
+      if (i === index) openDrawer(item.dataset.reviewId);
+      else goTo(i, reduce, true);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goTo(index - 1, reduce);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goTo(index + 1, reduce);
+      } else if ((e.key === "Enter" || e.key === " ") && e.target === stage) {
+        e.preventDefault();
+        openDrawer(items[index].dataset.reviewId);
+      }
+    }
+
+    function onResize() {
+      measure();
+      layout();
+    }
+
+    function onVisibility() {
+      if (!document.hidden) return;
+      dragging = false;
+      downItem = null;
+      stage.classList.remove("is-dragging");
+      openOnSettle = false;
+      stopSpring();
+      pos = target;
+      vel = 0;
+      layout();
+      syncChrome(false);
+    }
+
+    items.forEach((el) => {
+      const btn = el.querySelector(".concept-hit");
+      if (!btn) return;
+      btn.addEventListener("click", onClick);
+    });
+    stage.addEventListener("pointerdown", onPointerDown);
+    stage.addEventListener("pointermove", onPointerMove);
+    stage.addEventListener("pointerup", onPointerUp);
+    stage.addEventListener("pointercancel", onPointerCancel);
+    wrap.addEventListener("keydown", onKeyDown);
+    if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1, reduce));
+    if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1, reduce));
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    measure();
+    goTo(index, true);
+    booted = true;
+
+    conceptCleanups.push(() => {
+      stopSpring();
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stage.removeEventListener("pointerdown", onPointerDown);
+      stage.removeEventListener("pointermove", onPointerMove);
+      stage.removeEventListener("pointerup", onPointerUp);
+      stage.removeEventListener("pointercancel", onPointerCancel);
+      wrap.removeEventListener("keydown", onKeyDown);
+    });
+  }
+
+  function boardLayout() {
+    if (!ui.lab && (ui.layout === "band" || ui.layout === "coast")) return "sections";
+    return ui.layout;
+  }
+
   function renderBoard() {
+    const layout = boardLayout();
+    if (layout === "cover") {
+      const deck = coverDeck();
+      const list = deck.cards;
+      const scope = deck.preferred ? "Try It, promoted, and favorites" : "current review set";
+      const header = `
+        <div class="canvas-header">
+          <div>
+            <h2>${brandTitle("Reviews")}</h2>
+            <p>${list.length} card${list.length === 1 ? "" : "s"} · Cover browse · ${scope}</p>
+          </div>
+        </div>`;
+      if (!list.length) return header + `<div class="empty-state"><p>Nothing in this stack</p><p class="empty-hint">Cover Browse shows Try It, Promoted, or Favorites. Star or promote a review, or switch the stack filter.</p><button type="button" class="btn-gold" data-empty-browse>Browse Reviews</button><button type="button" class="btn-ghost" data-empty-favorites>Show Favorites</button></div>`;
+      return header + renderCoverFlow(list);
+    }
     const list = filteredCards();
+    const layoutName = layout === "grid" ? "bento grid" : layout === "band" ? "image accordion" : layout === "coast" ? "inertia gallery" : "magazine lanes";
     const header = `
       <div class="canvas-header">
         <div>
           <h2>${brandTitle("Reviews")}</h2>
-          <p>${list.length} card${list.length === 1 ? "" : "s"} · magazine lanes · amber forge</p>
+          <p>${list.length} card${list.length === 1 ? "" : "s"} · ${layoutName} · amber forge</p>
         </div>
       </div>`;
     if (!list.length) return header + `<div class="empty-state"><p>No cards match filters.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
-    if (ui.layout === "grid") return header + `<div class="bento">${list.map(cardEl).join("")}</div>`;
+    if (layout === "grid") return header + `<div class="bento">${list.map(cardEl).join("")}</div>`;
+    if (layout === "band" && window.ForgeLab) return header + window.ForgeLab.renderBand(list);
+    if (layout === "coast" && window.ForgeLab) {
+      const deck = coverDeck();
+      return header + window.ForgeLab.renderCoast(deck.cards.length ? deck.cards : list);
+    }
 
+    const activeLanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : null);
     let html = header + `<div class="lanes">`;
     for (const lane of LANES) {
       const items = list.filter((c) => c.lane === lane.id);
-      if (ui.filterLane && ui.filterLane !== lane.id) continue;
+      if (activeLanes && !activeLanes.includes(lane.id)) continue;
+      if (!items.length) continue;
       html += `
         <section class="lane-col ${lane.id}">
           <div class="lane-head">
@@ -1046,7 +2116,13 @@
     const q = ui.search.trim().toLowerCase();
     let cards = state.cards.filter((c) => c.favorite);
     let bms = state.bookmarks.filter((b) => b.favorite);
-    if (ui.filterProject) cards = cards.filter((c) => c.goesTo === ui.filterProject);
+    const favProjects = (ui.filterProjects && ui.filterProjects.length) ? ui.filterProjects : (ui.filterProject ? [ui.filterProject] : []);
+    const favLanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : []);
+    const favCats = (ui.filterCategories && ui.filterCategories.length) ? ui.filterCategories : (ui.filterCategory ? [ui.filterCategory] : []);
+    if (favProjects.length) cards = cards.filter((c) => favProjects.includes(c.goesTo));
+    if (favLanes.length) cards = cards.filter((c) => favLanes.includes(c.lane));
+    if (favCats.length) cards = cards.filter((c) => favCats.includes(c.category));
+    if (ui.filterPromoted) cards = cards.filter((c) => c.promoted);
     if (q) {
       cards = cards.filter((c) => [c.title, c.category, c.recommendation].join(" ").toLowerCase().includes(q));
       bms = bms.filter((b) => [b.title, b.url, b.note].join(" ").toLowerCase().includes(q));
@@ -1150,7 +2226,8 @@
       ).join("");
 
     const item = (t) => `
-      <div class="shelf-item todo-item" data-todo-id="${escapeHtml(t.id)}">
+      <div class="shelf-item todo-item" data-todo-id="${escapeHtml(t.id)}" role="listitem">
+        <button type="button" class="todo-grip" data-todo-grip="${escapeHtml(t.id)}" aria-label="Reorder ${escapeHtml(t.text)}"><span aria-hidden="true">⠿</span></button>
         <button type="button" class="todo-check ${t.done ? "done" : ""}" data-todo-toggle="${escapeHtml(t.id)}" aria-label="Toggle done">${t.done ? "✓" : ""}</button>
         <span class="todo-text ${t.done ? "struck" : ""}" data-todo-edit="${escapeHtml(t.id)}" title="Tap to edit">${escapeHtml(t.text)}</span>
         ${t.goesTo ? `<span class="badge goes todo-goes">${escapeHtml(t.goesTo)}</span>` : `<span class="badge todo-goes dim">—</span>`}
@@ -1166,19 +2243,20 @@
     const doneCount = state.todos.filter((t) => t.done).length;
     return `
       <div class="canvas-header"><div><h2>${brandTitle("To-do")}</h2><p>Personal tracker — projects, severity, inline edit, parking lane.</p></div></div>
+      <p class="reorder-hint">Drag the grip to set priority. Order is saved in this browser. Arrow buttons still move one step.</p>
       <div class="todo-filter-strip" aria-label="To-do status filters">${statusChips}</div>
       <div class="todo-project-strip" aria-label="To-do project filters">${projectChips}</div>
       <div class="shelf-toolbar">
         <button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button>
         <button type="button" class="btn-ghost" id="btn-clear-done" ${doneCount ? "" : "disabled"} title="Remove completed to-dos">Clear done${doneCount ? ` (${doneCount})` : ""}</button>
       </div>
-      <div class="shelf">${(status === "parked" ? parked : active).length
+      <div class="shelf reorder-list" role="list" aria-label="To-do priority" data-reorder-zone="${status === "parked" ? "parked" : "active"}">${(status === "parked" ? parked : active).length
         ? (status === "parked" ? parked : active).map(item).join("")
         : `<div class="empty-state"><p>${status === "all" ? "Inbox clear." : "Nothing matches."}</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
       ${showParkedZone && status === "all" ? `
       <div class="parked-zone">
         <div class="label">Parking lane</div>
-        <div class="shelf">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
+        <div class="shelf reorder-list" role="list" aria-label="Parked to-dos" data-reorder-zone="parked">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
       </div>` : ""}`;
   }
 
@@ -1191,7 +2269,7 @@
       { id: "palette", ico: "⌘", title: "Open command palette", desc: "Jump, filter with operators, add, or export without leaving the board.", run: "palette" },
     ];
     return `
-      <div class="canvas-header"><div><h2>${brandTitle("Tools")}</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("Tools")}</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p><p class="tools-swap-hint">Card Swap stack is below.</p></div></div>
       <div class="tools-grid">
         ${tools.map((t) => `
           <button type="button" class="tool-card" data-tool="${t.run}">
@@ -1200,6 +2278,13 @@
             <p>${escapeHtml(t.desc)}</p>
           </button>`).join("")}
       </div>
+      ${(() => {
+        const spot = cardSwapCards();
+        if (!spot.length) {
+          return `<section class="concept-block card-swap-block" id="card-swap" tabindex="-1" aria-labelledby="card-swap-title"><div class="concept-block-head"><h3 id="card-swap-title">${brandTitle("Card Swap")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Holds up to three Try It reviews. Card Swap stays on Tools, not on the board.</p><p class="empty-hint">Nothing pinned yet.</p></div></section>`;
+        }
+        return renderCardSwap(spot);
+      })()}
       <div class="tools-tip" role="note">
         <strong>Install / Add to Home Screen</strong>
         <p>On phone or tablet: open the browser share/menu → <em>Add to Home Screen</em> / <em>Install app</em>. Forge installs as a standalone board (PWA manifest linked).</p>
@@ -1207,11 +2292,23 @@
   }
 
   function wireCanvasEvents(canvas) {
+    canvas.querySelectorAll(".card-thumb img").forEach((img) => {
+      img.addEventListener("error", () => {
+        const thumb = img.closest(".card-thumb");
+        const mono = thumb?.dataset.mono || "·";
+        img.remove();
+        if (thumb && !thumb.querySelector(".monogram")) {
+          const mark = document.createElement("span");
+          mark.className = "monogram";
+          mark.textContent = mono;
+          thumb.appendChild(mark);
+        }
+      });
+    });
     canvas.querySelectorAll("[data-card-id]").forEach((el) => {
-      const open = () => openDrawer(el.dataset.cardId);
-      el.addEventListener("click", (e) => { if (e.target.closest("[data-fav]")) return; open(); });
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("[data-fav]")) return;
+        openDrawer(el.dataset.cardId);
       });
     });
     canvas.querySelectorAll("[data-fav]").forEach((btn) => {
@@ -1297,6 +2394,22 @@
     canvas.querySelectorAll("[data-empty-goto-board]").forEach((btn) => {
       btn.addEventListener("click", () => { ui.view = "board"; render(); });
     });
+    canvas.querySelectorAll("[data-empty-browse]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.view = "board";
+        ui.layout = "sections";
+        render();
+      });
+    });
+    canvas.querySelectorAll("[data-empty-favorites]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.view = "board";
+        ui.layout = "cover";
+        ui.filterFavorites = true;
+        syncFilterChrome();
+        render();
+      });
+    });
     canvas.querySelectorAll("[data-btype]").forEach((btn) => {
       btn.addEventListener("click", () => {
         ui.filterBookmarkType = btn.dataset.btype || "";
@@ -1313,6 +2426,8 @@
         else if (run === "palette") openPalette();
       });
     });
+    mountConceptLayouts(canvas);
+    if (window.ForgeLab && window.ForgeLab.wireCanvas) window.ForgeLab.wireCanvas(canvas);
   }
 
   function getCard(id) { return state.cards.find((c) => c.id === id); }
@@ -1675,8 +2790,12 @@
     const shot = screenshotSrc(c);
     const body = document.getElementById("drawer-body");
     body.innerHTML = `
+      <a class="btn-primary drawer-open" href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener">Open</a>
+      <div class="callout callout-rec callout-rec-lead">
+        <div class="callout-title">My recommendation</div>
+        <p>${escapeHtml(c.recommendation || "—")}</p>
+      </div>
       <div class="drawer-actions-row">
-        <a class="btn-primary" href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Open link ↗</a>
         <button type="button" class="btn-ghost" id="d-copy-brief">Copy Cursor brief</button>
         <button type="button" class="btn-ghost" id="d-copy-md">Copy Markdown</button>
         <button type="button" class="btn-ghost" id="d-copy-bridge">Copy bridge note</button>
@@ -1703,10 +2822,6 @@
           <input type="date" id="d-revisit" value="${escapeHtml(c.revisitDate || "")}" /></label>
         <div class="field-block"><div class="field-label">Rating rubric</div>
           <p class="rubric-line">${escapeHtml(RATING_RUBRIC[c.rating] || "—")}</p></div>
-      </div>
-      <div class="callout callout-rec">
-        <div class="callout-title">My recommendation</div>
-        <p>${escapeHtml(c.recommendation || "—")}</p>
       </div>
       <div class="callout callout-cherry">
         <div class="callout-title">Cherry-pick</div>
@@ -1762,7 +2877,11 @@
 
     drawer.classList.add("open");
     backdrop.classList.add("open");
-    drawer.setAttribute("aria-hidden", "false");
+    beginDialog(drawer, {
+      host: drawer,
+      initial: document.getElementById("drawer-close"),
+      close: closeDrawer,
+    });
 
     document.getElementById("d-copy-brief").addEventListener("click", () => {
       copyText(c.cursorBrief || "", "Cursor brief copied");
@@ -1887,13 +3006,15 @@
         if (!open) frameWrap.innerHTML = "";
       });
     }
+    if (window.ForgeLab && window.ForgeLab.enhanceDrawer) window.ForgeLab.enhanceDrawer();
   }
 
   function closeDrawer() {
     ui.drawerId = null;
-    document.getElementById("drawer").classList.remove("open");
+    const drawer = document.getElementById("drawer");
+    drawer.classList.remove("open");
     document.getElementById("drawer-backdrop").classList.remove("open");
-    document.getElementById("drawer").setAttribute("aria-hidden", "true");
+    endDialog(drawer);
     document.getElementById("drawer-sticky").innerHTML = "";
     document.getElementById("drawer-body").innerHTML = "";
   }
@@ -1902,11 +3023,25 @@
     document.getElementById("modal-title").textContent = title;
     document.getElementById("modal-body").innerHTML = bodyHtml;
     document.getElementById("modal-foot").innerHTML = footHtml;
-    document.getElementById("modal-backdrop").classList.add("open");
+    const backdrop = document.getElementById("modal-backdrop");
+    const modal = document.getElementById("modal");
+    backdrop.classList.add("open");
+    beginDialog(modal, {
+      host: backdrop,
+      close: closeModal,
+      initial: () => {
+        const body = document.getElementById("modal-body");
+        const field = body && body.querySelector("input, select, textarea");
+        if (field) return field;
+        const foot = document.getElementById("modal-foot");
+        return foot && foot.querySelector("button");
+      },
+    });
   }
 
   function closeModal() {
     document.getElementById("modal-backdrop").classList.remove("open");
+    endDialog(document.getElementById("modal"));
   }
 
   function openAddCardModal() {
@@ -2140,6 +3275,7 @@
       for (const c of state.cards) c.protected = true;
       save(); closeDrawer();
       ui.filterLane = ""; ui.filterCategory = "";
+      ui.filterLanes = []; ui.filterCategories = []; ui.filterProjects = [];
       ui.filterPromoted = false; ui.filterFavorites = false;
       ui.filterProject = ""; ui.filterBookmarkType = "";
       ui.todoStatusFilter = "all"; ui.todoProjectFilter = "";
@@ -2152,6 +3288,57 @@
       toast("Reset failed — seed.json missing?");
     }
   }
+
+  function setLayout(layout) {
+    ui.layout = layout;
+    ui.view = "board";
+    closeDrawer();
+    syncFilterChrome();
+    render();
+    const names = { sections: "Lanes", grid: "Bento", cover: "Cover", band: "Band", coast: "Coast" };
+    toast(`Layout → ${names[layout] || layout}`);
+  }
+
+  function setView(view) {
+    ui.view = view;
+    closeDrawer();
+    render();
+  }
+
+  function setCardLane(id, lane) {
+    const card = getCard(id);
+    if (!card) return;
+    card.lane = lane;
+    save();
+    render();
+    if (ui.drawerId === id) openDrawer(id);
+    toast(`Lane → ${LANES.find((l) => l.id === lane)?.label || lane}`);
+  }
+
+  function togglePromoted(id) {
+    const card = getCard(id);
+    if (!card) return;
+    card.promoted = !card.promoted;
+    save();
+    render();
+    if (ui.drawerId === id) openDrawer(id);
+    toast(card.promoted ? "Promoted" : "Unpromoted");
+  }
+
+  function importClick() {
+    document.getElementById("import-file").click();
+  }
+
+  window.__forge = {
+    get state() { return state; },
+    get ui() { return ui; },
+    save, render, renderCanvas, toast, escapeHtml, openDrawer, closeDrawer,
+    toggleFavorite, exportJson, resetToSeed, clearFilters, openHelp, openPalette,
+    jumpToCardSwap, copyText, saveLabPref, setLayout, setView, setCardLane, togglePromoted,
+    importClick, categories, projectList, filteredCards, coverDeck, monogram,
+    screenshotSrc, starsHtml, laneName, brandTitle,
+    LANES,
+  };
 
   init();
 })();

@@ -11,12 +11,37 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <title>LinkLabz Forge</title>
+  <meta name="description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta property="og:title" content="LinkLabz Forge" />
+  <meta property="og:description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://jonbeatz.github.io/linklabz-forge-preview/" />
+  <meta property="og:image" content="https://jonbeatz.github.io/linklabz-forge-preview/assets/screenshot.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="LinkLabz Forge" />
+  <meta name="twitter:description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta name="twitter:image" content="https://jonbeatz.github.io/linklabz-forge-preview/assets/screenshot.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260923n" />
+  <link rel="stylesheet" href="styles.css?v=20260924swap" />
+  <link rel="stylesheet" href="lab.css?v=20260924swap" />
 </head>
 <body>
+  <svg class="lab-fx" aria-hidden="true" focusable="false" width="0" height="0">
+    <filter id="lab-goo" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" result="goo" />
+    </filter>
+    <filter id="lab-goo-lite" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -7" result="goo" />
+    </filter>
+    <filter id="lab-liquid" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="3" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
   <div class="void-bg" aria-hidden="true">
     <div class="mesh mesh-a"></div>
     <div class="mesh mesh-b"></div>
@@ -45,9 +70,9 @@
           </span>
           <div class="more-menu">
             <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="More workspace actions" aria-label="More workspace actions">⋯</button>
-            <div class="more-dropdown" id="more-dropdown" hidden>
-              <button type="button" id="btn-reset">↺ Reset to seed</button>
-              <button type="button" id="btn-clear-filters">⌀ Clear filters</button>
+            <div class="more-dropdown" id="more-dropdown" role="menu" aria-label="Workspace actions" hidden>
+              <button type="button" role="menuitem" id="btn-reset">↺ Reset to seed</button>
+              <button type="button" role="menuitem" id="btn-clear-filters">⌀ Clear filters</button>
             </div>
             <input type="file" id="import-file" accept="application/json,.json" class="sr-only" />
           </div>
@@ -55,6 +80,7 @@
       </div>
 
       <nav class="view-pills" id="nav" aria-label="Views">
+        <span class="pill-blob" aria-hidden="true"></span>
         <button type="button" class="pill active" data-view="board">Reviews <span class="pill-count" id="count-board">0</span></button>
         <button type="button" class="pill" data-view="bookmarks">Bookmarks <span class="pill-count" id="count-bookmarks">0</span></button>
         <button type="button" class="pill" data-view="spitballs">Spitballs <span class="pill-count" id="count-spitballs">0</span></button>
@@ -63,12 +89,24 @@
         <button type="button" class="pill" data-view="tools">Tools</button>
       </nav>
 
+      <div class="layout-toggle" id="board-layout" role="group" aria-label="Board layout">
+        <button type="button" class="active" data-layout="sections" title="Magazine lanes (home)">Lanes</button>
+        <button type="button" data-layout="grid" title="Dense compare grid">Bento</button>
+        <button type="button" data-layout="cover" title="Browse lens (Try / Promoted / Favorites)">Cover</button>
+        <button type="button" class="lab-only" data-layout="band" hidden title="Lab — lanes as an image accordion">Band</button>
+        <button type="button" class="lab-only" data-layout="coast" hidden title="Lab — inertia gallery">Coast</button>
+      </div>
+      <div id="lab-mega" class="lab-mega" hidden></div>
+
       <div class="island-tools">
+        <button type="button" class="chip lab-toggle on" id="btn-lab" aria-pressed="true" title="Toggle the GodUI lab">Lab</button>
+        <button type="button" class="chip" id="btn-filters" aria-expanded="false" aria-controls="island-filters">Filters</button>
         <button type="button" class="btn-ghost-icon search-toggle" id="btn-search-toggle" aria-label="Toggle search" aria-expanded="false" title="Search">⌕</button>
         <div class="search-wrap" id="search-wrap">
           <span class="search-icon" aria-hidden="true">⌕</span>
           <input type="search" id="search" placeholder="Search…  lane:try project:reWavz" autocomplete="off" enterkeyhint="search" />
         </div>
+        <button type="button" class="btn-ghost-icon help-toggle" id="btn-help" title="Forge reference" aria-label="Help">?</button>
         <button type="button" class="kbd-chip" id="btn-cmd-palette" title="Command palette" aria-label="Open command palette">
           <span id="kbd-chip-label">⌘K</span>
         </button>
@@ -80,10 +118,8 @@
           <span class="btn-ico" aria-hidden="true">↑</span><span class="btn-label"> Load</span>
         </button>
       </div>
-    </header>
 
-    <!-- Stats strip -->
-    <section class="stats-strip" id="stats-strip" aria-label="Summary">
+      <section class="stats-strip island-metrics" id="stats-strip" aria-label="Summary">
       <div class="stat-pill keep"><span class="stat-n" id="stat-total">0</span><span class="stat-l">reviewed</span></div>
       <div class="stat-pill try keep"><span class="stat-n" id="stat-try">0</span><span class="stat-l">try it</span></div>
       <div class="stat-pill parked keep"><span class="stat-n" id="stat-parked">0</span><span class="stat-l">parked</span></div>
@@ -93,7 +129,8 @@
       <div class="stat-pill gold keep"><span class="stat-n" id="stat-favs">0</span><span class="stat-l">favorites</span></div>
     </section>
 
-    <!-- Board filters (board/favorites) -->
+    <div class="island-filters" id="island-filters">
+    <div id="lab-filters" class="lab-filters" hidden></div>
     <div class="filter-bar" id="board-filters">
       <select class="select" id="filter-lane" aria-label="Filter by lane">
         <option value="">All lanes</option>
@@ -115,20 +152,20 @@
         <option value="newest">Newest</option>
         <option value="az">A–Z</option>
       </select>
-      <div class="layout-toggle" role="group" aria-label="Board layout">
-        <button type="button" class="active" data-layout="sections" title="Magazine lanes">Lanes</button>
-        <button type="button" data-layout="grid" title="Bento grid">Bento</button>
-      </div>
     </div>
 
     <div class="project-strip" id="project-strip" aria-label="Goes-to project filters"></div>
+    </div>
+    </header>
 
+    <div class="board-surface" id="board-surface">
     <main class="canvas" id="canvas" tabindex="-1"></main>
+    </div>
   </div>
 
   <!-- Detail drawer -->
   <div class="drawer-backdrop" id="drawer-backdrop"></div>
-  <aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Review detail">
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="drawer-title" tabindex="-1" inert>
     <div class="drawer-gold-strip" id="drawer-sticky"></div>
     <div class="drawer-head">
       <h2 id="drawer-title">—</h2>
@@ -138,8 +175,8 @@
   </aside>
 
   <!-- Command palette -->
-  <div class="palette-backdrop" id="palette-backdrop" aria-hidden="true">
-    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="palette-backdrop" id="palette-backdrop" inert>
+    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Command palette" tabindex="-1">
       <div class="palette-input-wrap">
         <span class="palette-icon" aria-hidden="true">⌕</span>
         <input type="text" id="palette-input" placeholder="Jump, filter, lane:try, project:…, add, export…" autocomplete="off" spellcheck="false" />
@@ -154,17 +191,111 @@
     </div>
   </div>
 
+  <!-- Forge reference -->
+  <div class="help-backdrop" id="help-backdrop" inert>
+    <div class="help-sheet" id="help" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="help-title" aria-describedby="help-subtitle" tabindex="-1">
+      <div class="help-head">
+        <div class="help-heading">
+          <h2 id="help-title">Forge reference</h2>
+          <p id="help-subtitle">Surfaces + keys. Lanes are home.</p>
+        </div>
+        <button type="button" class="drawer-close" id="help-close" aria-label="Close help">✕</button>
+      </div>
+      <div class="help-body">
+        <p class="help-intro">Operator cheat sheet for LinkLabz Forge. Open anytime from <code>?</code> on the command island — glass lightbox on desktop, full-sheet on mobile. No side key. No extra chrome bar.</p>
+
+        <h3 id="help-surfaces">Surfaces</h3>
+        <div class="help-surface">
+          <p><strong>Lanes</strong> — Canonical home — decide where each review lives.</p>
+          <p class="help-use">Drop three stem-splitter links into Inbox in the morning; by lunch two are Try It, one is Skipped with a one-line why — board stays honest without a chat dump. <span class="help-tip">Tip: Filters and <code>lane:</code> search act on this model. Don’t invent a fifth “maybe” lane.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Bento</strong> — Same lane model, denser grid — compare cards side by side.</p>
+          <p class="help-use">Flip to Bento when ranking three “Try It” VST tools; scan ratings and Goes-to chips without scrolling magazine rows. <span class="help-tip">Tip: Toggle back to Lanes when you’re triaging, not comparing.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Cover Browse</strong> — Optional Browse lens over Try / Promoted / Favorites — still opens the same detail drawer.</p>
+          <p class="help-use">Flip through Promoted favorites like a short stack before a Cursor session; pick one, open drawer, copy the brief. <span class="help-tip">Tip: No floor reflection. Cover is a lens, not a second board. ← → moves the stack when Cover is on.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Reviews</strong> — Full review cards — verdict, rating, recommendation, cherry-picks, Cursor brief.</p>
+          <p class="help-use">Open StemKit parked as “inspect only”; copy bridge note into Shared Notes without rebuilding the write-up. <span class="help-tip">Tip: Protected seeds lock so Reset doesn’t wipe harvest you already trust.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Bookmarks</strong> — Typed quick-saves when a full review ceremony is overkill.</p>
+          <p class="help-use">Save a Divi tutorial as Tutorial + one-line note; graduate to a Review later if it earns a verdict. <span class="help-tip">Tip: Duplicate URL guard is on — don’t fight it; update the existing bookmark instead.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Spitballs</strong> — Raw ideas before they deserve a lane.</p>
+          <p class="help-use">Capture “Explorer Fast Copy toggle + parallel jobs” mid-chat; Graduate → Inbox when you’re ready to review for real. <span class="help-tip">Tip: Spitballs aren’t decisions. If it has a verdict, it’s a Review.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>To-do</strong> — Action queue tied to projects — severity, park, inline edit, clear done.</p>
+          <p class="help-use">After Evaluate on a card, accept the linked to-do; filter High + Active before a Vader build block. <span class="help-tip">Tip: Palette capture: <code>todo buy coffee</code> or <code>t buy coffee</code> then Enter.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Detail drawer</strong> — Sticky amber strip for one card — lane, evidence, markdown, bridge note, linked to-do.</p>
+          <p class="help-use">Check evidence, Copy Markdown into a Bridge doc, leave the list context behind the drawer. <span class="help-tip">Tip: Esc closes drawer (and palette/modal/help first if those are open).</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Command island</strong> — Search, shelf jump, Download/Load, session chip, <code>?</code> Help, and the ⌘K / Ctrl+K palette.</p>
+          <p class="help-use">Type <code>lane:try</code> or <code>project:reWavz</code> without hunting filter chips; run “Toggle layout → Bento” from the palette mid-flow. <span class="help-tip">Tip: Session · Dirty means Download before a risky Load/Reset. Help lives on the island — tap <code>?</code>, don’t look for a side panel.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Card Swap</strong> — Manual stack of up to three Try It reviews. It is a section on the Tools shelf, not a board mode and not an island control.</p>
+          <p class="help-use">Open RoboSync, UVR GUI, and Noizefield as a “this week’s trial stack” on the Tools shelf. <span class="help-tip">Tip: Max 3, arrows only. Never auto-rotate the main Lanes board into Card Swap.</span></p>
+        </div>
+
+        <h3>Keyboard &amp; controls</h3>
+        <ul class="help-keys">
+          <li><span>Open Help</span><span><code>?</code> on command island</span></li>
+          <li><span>Command palette</span><span><kbd>⌘K</kbd> (Mac) / <kbd>Ctrl</kbd>+<kbd>K</kbd> (Win/Linux)</span></li>
+          <li><span>Close Help / palette / drawer / modal</span><span><kbd>Esc</kbd> (topmost first)</span></li>
+          <li><span>Palette navigate</span><span><kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Enter</kbd> to run</span></li>
+          <li><span>Search operators (board)</span><span><code>lane:</code> <code>project:</code> <code>hardware:</code> <code>found:</code> <code>action:</code></span></li>
+          <li><span>Examples</span><span><code>lane:try</code> · <code>project:reWavz</code> · <code>hardware:rtx</code></span></li>
+          <li><span>Layout toggle</span><span>Lanes | Bento | Cover</span></li>
+          <li><span>Card Swap</span><span>Tools shelf · arrows move the stack</span></li>
+          <li><span>Cover Browse</span><span><kbd>←</kbd> <kbd>→</kbd> when Cover lens is active</span></li>
+          <li><span>To-do capture (palette)</span><span><code>todo …</code> or <code>t …</code> then Enter</span></li>
+          <li><span>Workspace</span><span>Download / Load on the island · Reset to seed under ⋯</span></li>
+        </ul>
+
+        <h3>What’s experimental</h3>
+        <ul class="help-list">
+          <li><strong>Cover Browse</strong> — optional Try / Promoted / Favorites lens; same drawer; no floor reflection.</li>
+          <li><strong>Card Swap</strong> — max 3 manual cards on Tools only. Not a board mode.</li>
+          <li><strong>Lab</strong> — facet filters, project combobox, Workspace mega menu, Band and Coast lenses, gold foil on Try It / top-rated cards, liquid glass on the island. Turn Lab off to use the classic selects. Lanes stays home.</li>
+          <li><strong>Load workspace</strong> — replaces the current board (no merge/upsert yet). Download first.</li>
+          <li><strong>Master Muse</strong> — Trinity’s board remains source of truth until Jon says otherwise. Forge is the amber Pages challenger.</li>
+        </ul>
+      </div>
+      <p class="help-foot">Preview · <code>linklabz-forge-v1.2</code> · not cloud-synced</p>
+    </div>
+  </div>
+
   <!-- Modal -->
-  <div class="modal-backdrop" id="modal-backdrop" role="presentation">
-    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-backdrop" id="modal-backdrop" role="presentation" inert>
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" tabindex="-1">
       <h3 id="modal-title">Add</h3>
       <div id="modal-body"></div>
       <div class="modal-foot" id="modal-foot"></div>
     </div>
   </div>
 
+  <nav class="tabbar" id="tabbar" aria-label="Views">
+    <span class="tabbar-blob" aria-hidden="true"></span>
+    <button type="button" class="tabbar-btn" data-view="board" aria-current="page"><span class="tab-ico" aria-hidden="true">▣</span><span class="tab-label">Reviews</span><span class="tab-badge" id="tab-count-board">0</span></button>
+    <button type="button" class="tabbar-btn" data-view="bookmarks"><span class="tab-ico" aria-hidden="true">⌁</span><span class="tab-label">Marks</span><span class="tab-badge" id="tab-count-bookmarks">0</span></button>
+    <button type="button" class="tabbar-btn" data-view="spitballs"><span class="tab-ico" aria-hidden="true">✎</span><span class="tab-label">Ideas</span><span class="tab-badge" id="tab-count-spitballs">0</span></button>
+    <button type="button" class="tabbar-btn" data-view="todo"><span class="tab-ico" aria-hidden="true">☑</span><span class="tab-label">To-do</span><span class="tab-badge" id="tab-count-todo">0</span></button>
+    <button type="button" class="tabbar-btn" data-view="favorites"><span class="tab-ico" aria-hidden="true">★</span><span class="tab-label">Favs</span><span class="tab-badge" id="tab-count-favorites">0</span></button>
+    <button type="button" class="tabbar-btn" data-view="tools"><span class="tab-ico" aria-hidden="true">⚙</span><span class="tab-label">Tools</span></button>
+  </nav>
+
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260923n"></script>
+  <script src="app.js?v=20260924swap"></script>
+  <script src="lab.js?v=20260924swap"></script>
 </body>
 </html>
