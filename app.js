@@ -213,6 +213,17 @@
     return `<span class="stars" aria-label="${r} of 5 stars">${s}</span>`;
   }
 
+
+  /** LinkLabz Forge title style: last word amber italic (or whole word if one). */
+  function brandTitle(text) {
+    const parts = String(text || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    if (parts.length === 1) return `<em>${escapeHtml(parts[0])}</em>`;
+    const last = parts.pop();
+    return `${parts.map(escapeHtml).join(" ")} <em>${escapeHtml(last)}</em>`;
+  }
+
+
   function escapeHtml(str) {
     return String(str ?? "")
       .replace(/&/g, "&amp;")
@@ -907,7 +918,7 @@
     const header = `
       <div class="canvas-header">
         <div>
-          <h2>Reviews</h2>
+          <h2>${brandTitle("Reviews")}</h2>
           <p>${list.length} card${list.length === 1 ? "" : "s"} · magazine lanes · amber forge</p>
         </div>
       </div>`;
@@ -922,7 +933,7 @@
         <section class="lane-col ${lane.id}">
           <div class="lane-head">
             <span class="lane-dot"></span>
-            <h3>${lane.label}</h3>
+            <h3>${brandTitle(lane.label)}</h3>
             <span class="lane-count">${items.length}</span>
           </div>
           <div class="lane-stack">
@@ -945,7 +956,7 @@
       `<button type="button" class="chip ${ui.filterBookmarkType === t ? "on" : ""}" data-btype="${escapeHtml(t)}">${escapeHtml(t)}</button>`
     ).join("");
     return `
-      <div class="canvas-header"><div><h2>Bookmarks</h2><p>Lightweight quick-saves — title, link, type, one-liner.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("Bookmarks")}</h2><p>Lightweight quick-saves — title, link, type, one-liner.</p></div></div>
       <div class="project-strip" style="margin-bottom:12px">
         <button type="button" class="chip ${ui.filterBookmarkType === "" ? "on" : ""}" data-btype="">All types</button>
         ${typeChips}
@@ -976,10 +987,10 @@
       bms = bms.filter((b) => [b.title, b.url, b.note].join(" ").toLowerCase().includes(q));
     }
     return `
-      <div class="canvas-header"><div><h2>Favorites</h2><p>Cross-shelf: favorited reviews + bookmarks.</p></div></div>
-      <h3 style="font-family:var(--font-display);font-size:1.1rem;margin:8px 0 10px;color:var(--text-muted)">Reviews</h3>
+      <div class="canvas-header"><div><h2>${brandTitle("Favorites")}</h2><p>Cross-shelf: favorited reviews + bookmarks.</p></div></div>
+      <h3 class="section-kicker">${brandTitle("Reviews")}</h3>
       ${cards.length ? `<div class="bento">${cards.map(cardEl).join("")}</div>` : `<div class="empty-state"><p>No favorite reviews.</p><button type="button" class="btn-ghost" data-empty-goto-board>Browse reviews</button></div>`}
-      <h3 style="font-family:var(--font-display);font-size:1.1rem;margin:22px 0 10px;color:var(--text-muted)">Bookmarks</h3>
+      <h3 class="section-kicker" style="margin-top:22px">${brandTitle("Bookmarks")}</h3>
       <div class="shelf">
         ${bms.length ? bms.map((b) => `
             <div class="shelf-item">
@@ -1002,7 +1013,7 @@
       return "Already promoted";
     };
     return `
-      <div class="canvas-header"><div><h2>Spitballs</h2><p>Raw future-project ideas. Funnel: Spitball → Reviewed (Inbox) → Promoted.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("Spitballs")}</h2><p>Raw future-project ideas. Funnel: Spitball → Reviewed (Inbox) → Promoted.</p></div></div>
       <div class="funnel-note">Spitball → Reviewed lands a card in Inbox · then Promote</div>
       <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-spitball">+ Add spitball</button></div>
       <div class="shelf">
@@ -1044,7 +1055,7 @@
         </div>
       </div>`;
     return `
-      <div class="canvas-header"><div><h2>To-do</h2><p>Personal tracker — check-off, severity, reorder, parking lane.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("To-do")}</h2><p>Personal tracker — check-off, severity, reorder, parking lane.</p></div></div>
       <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button></div>
       <div class="shelf">${active.length ? active.map(item).join("") : `<div class="empty-state"><p>Inbox clear.</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
       <div class="parked-zone">
@@ -1062,7 +1073,7 @@
       { id: "palette", ico: "⌘", title: "Open command palette", desc: "Jump, filter with operators, add, or export without leaving the board.", run: "palette" },
     ];
     return `
-      <div class="canvas-header"><div><h2>Tools</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p></div></div>
+      <div class="canvas-header"><div><h2>${brandTitle("Tools")}</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p></div></div>
       <div class="tools-grid">
         ${tools.map((t) => `
           <button type="button" class="tool-card" data-tool="${t.run}">

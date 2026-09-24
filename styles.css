@@ -689,6 +689,18 @@ a {
   font-weight: 800;
   font-variation-settings: "wght" 800, "opsz" 36;
   letter-spacing: -0.025em;
+  color: var(--text);
+  font-style: normal;
+}
+
+.canvas-header h2 em,
+.lane-head h3 em,
+.section-kicker em {
+  font-style: italic;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 32;
+  color: var(--amber);
+  font-family: var(--font-display);
 }
 
 .canvas-header p {
@@ -752,6 +764,17 @@ a {
   font-weight: 800;
   font-variation-settings: "wght" 800, "opsz" 24;
   flex: 1;
+  color: var(--text);
+  font-style: normal;
+}
+
+.section-kicker {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 24;
+  margin: 8px 0 10px;
+  color: var(--text);
 }
 
 .lane-dot {
