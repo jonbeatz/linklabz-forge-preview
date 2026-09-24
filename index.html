@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LinkLabz Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="void-bg" aria-hidden="true">
+    <div class="mesh mesh-a"></div>
+    <div class="mesh mesh-b"></div>
+    <div class="mesh mesh-c"></div>
+    <div class="grain"></div>
+  </div>
+
+  <div class="shell" id="app">
+    <!-- Floating command island -->
+    <header class="island" id="island">
+      <div class="island-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="brand-spark"></span>
+        </div>
+        <div class="brand-text">
+          <h1 class="wordmark">LinkLabz <em>Forge</em></h1>
+          <span class="brand-badge">review board · v1</span>
+        </div>
+      </div>
+
+      <nav class="view-pills" id="nav" aria-label="Views">
+        <button type="button" class="pill active" data-view="board">Reviews <span class="pill-count" id="count-board">0</span></button>
+        <button type="button" class="pill" data-view="bookmarks">Bookmarks <span class="pill-count" id="count-bookmarks">0</span></button>
+        <button type="button" class="pill" data-view="spitballs">Spitballs <span class="pill-count" id="count-spitballs">0</span></button>
+        <button type="button" class="pill" data-view="todo">To-do <span class="pill-count" id="count-todo">0</span></button>
+        <button type="button" class="pill" data-view="favorites">Favorites <span class="pill-count" id="count-favorites">0</span></button>
+      </nav>
+
+      <div class="island-tools">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input type="search" id="search" placeholder="Search reviews…" autocomplete="off" />
+        </div>
+        <button type="button" class="kbd-chip" id="btn-cmd-palette" title="Command palette" aria-label="Open command palette">
+          <span id="kbd-chip-label">⌘K</span>
+        </button>
+        <button type="button" class="btn-gold" id="btn-add-card">+ Add</button>
+        <div class="more-menu">
+          <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="Workspace">⋯</button>
+          <div class="more-dropdown" id="more-dropdown" hidden>
+            <button type="button" id="btn-export">↓ Export JSON</button>
+            <button type="button" id="btn-import">↑ Import JSON</button>
+            <button type="button" id="btn-reset">↺ Reset to seed</button>
+          </div>
+          <input type="file" id="import-file" accept="application/json,.json" class="sr-only" />
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats strip -->
+    <section class="stats-strip" id="stats-strip" aria-label="Summary">
+      <div class="stat-pill"><span class="stat-n" id="stat-total">0</span><span class="stat-l">reviewed</span></div>
+      <div class="stat-pill try"><span class="stat-n" id="stat-try">0</span><span class="stat-l">try it</span></div>
+      <div class="stat-pill parked"><span class="stat-n" id="stat-parked">0</span><span class="stat-l">parked</span></div>
+      <div class="stat-pill skipped"><span class="stat-n" id="stat-skipped">0</span><span class="stat-l">skipped</span></div>
+      <div class="stat-pill gold"><span class="stat-n" id="stat-briefs">0</span><span class="stat-l">briefs</span></div>
+      <div class="stat-pill gold"><span class="stat-n" id="stat-promoted">0</span><span class="stat-l">promoted</span></div>
+      <div class="stat-pill gold"><span class="stat-n" id="stat-favs">0</span><span class="stat-l">favorites</span></div>
+    </section>
+
+    <!-- Board filters (board/favorites) -->
+    <div class="filter-bar" id="board-filters">
+      <select class="select" id="filter-lane" aria-label="Filter by lane">
+        <option value="">All lanes</option>
+        <option value="try">Try It</option>
+        <option value="parked">Parked</option>
+        <option value="skipped">Skipped</option>
+      </select>
+      <select class="select" id="filter-category" aria-label="Filter by category">
+        <option value="">All categories</option>
+      </select>
+      <button type="button" class="chip" id="filter-promoted" aria-pressed="false">↑ Promoted</button>
+      <button type="button" class="chip" id="filter-favorites" aria-pressed="false">★ Favorites</button>
+      <select class="select" id="sort-by" aria-label="Sort">
+        <option value="rating">Top-rated</option>
+        <option value="newest">Newest</option>
+        <option value="az">A–Z</option>
+      </select>
+      <div class="layout-toggle" role="group" aria-label="Board layout">
+        <button type="button" class="active" data-layout="sections" title="Magazine lanes">Lanes</button>
+        <button type="button" data-layout="grid" title="Bento grid">Bento</button>
+      </div>
+    </div>
+
+    <div class="project-strip" id="project-strip" aria-label="Goes-to project filters"></div>
+
+    <main class="canvas" id="canvas" tabindex="-1"></main>
+  </div>
+
+  <!-- Detail drawer -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Review detail">
+    <div class="drawer-gold-strip" id="drawer-sticky"></div>
+    <div class="drawer-head">
+      <h2 id="drawer-title">—</h2>
+      <button type="button" class="drawer-close" id="drawer-close" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
+  <!-- Command palette -->
+  <div class="palette-backdrop" id="palette-backdrop" aria-hidden="true">
+    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="palette-input-wrap">
+        <span class="palette-icon" aria-hidden="true">⌕</span>
+        <input type="text" id="palette-input" placeholder="Jump, filter, set lane, add, export…" autocomplete="off" spellcheck="false" />
+        <kbd class="palette-esc">esc</kbd>
+      </div>
+      <div class="palette-results" id="palette-results" role="listbox"></div>
+      <div class="palette-foot">
+        <span><kbd>↑↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> run</span>
+        <span><kbd>esc</kbd> close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="modal-backdrop" role="presentation">
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">Add</h3>
+      <div id="modal-body"></div>
+      <div class="modal-foot" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <div class="toast-host" id="toast-host" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

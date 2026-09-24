@@ -1,0 +1,122 @@
+{
+  "source": "https://muse.ai/s/link-review-board-ec6lxgxhuxx4xf6",
+  "exported_at": "2026-09-23T16:55:00-07:00",
+  "workspace": "Link Review Board",
+  "count": 19,
+  "reviews": [
+    {
+      "title": "OpenDesign",
+      "rating": 4.9,
+      "verdict": "Try it",
+      "recommendation": "Try the desktop app, but treat the repository harvest as equally important: compare its contracts against the current DigitalStudioz skill-pack conventions."
+    },
+    {
+      "title": "ComfyUI-Ref2VA-VSA",
+      "rating": 4.8,
+      "verdict": "Try it",
+      "recommendation": "Run the side-install benchmark first. Adopt only if it stays under 16GB VRAM and character hold scores at least 4/5."
+    },
+    {
+      "title": "Grit & Chaos — Divi 5 website built with Claude (skill)",
+      "rating": 4.7,
+      "verdict": "Try it",
+      "recommendation": "Harvest complete. Next step is the pending merge of the lane-1 pack into Website-Templates .cursor/skills — Jon runs at Vader via Cursor on his go."
+    },
+    {
+      "title": "Aning — code-wordpress (Codex + Elementor workflow)",
+      "rating": 4.6,
+      "verdict": "Try it",
+      "recommendation": "Cherry-pick the skill shapes and blueprint packaging into the skill pack. Compare its conventions against the current pack before adopting."
+    },
+    {
+      "title": "Noizefield Audio Plugin Coder",
+      "rating": 4.5,
+      "verdict": "Try it",
+      "recommendation": "Evaluate against the VST3 stack lock when plugin work starts. Pair with the pluginval QA gate before any scaffold decision."
+    },
+    {
+      "title": "MiniMax H3 video model",
+      "rating": 4.4,
+      "verdict": "Try it",
+      "recommendation": "Keep testing. Do not expand scope beyond fun testing until Jon reviews the license grant email (see linked to-do)."
+    },
+    {
+      "title": "Ultimate Vocal Remover GUI",
+      "rating": 4.3,
+      "verdict": "Try it",
+      "recommendation": "Study the UX and model roster as the benchmark. Do not adopt its weights blindly — commercial-safe picks stay the locked MIT models."
+    },
+    {
+      "title": "RoboSync — modern robocopy GUI",
+      "rating": 4.0,
+      "verdict": "Try it",
+      "recommendation": "Trial on Vader first (see the linked to-do). Build Vader Desk only if the existing tools miss the stacked-jobs + preset workflow."
+    },
+    {
+      "title": "StemKit",
+      "rating": 4.2,
+      "verdict": "Parked",
+      "recommendation": "Keep parked as the architecture reference. Revisit only when the Stem Splitter satellite gets a scoped go from Jon."
+    },
+    {
+      "title": "Ship an iOS app with Codex",
+      "rating": 3.8,
+      "verdict": "Parked",
+      "recommendation": "Do not pursue the iOS workflow now. Apply its evidence-tied DONE / JON OWES pattern to future Cursor briefs."
+    },
+    {
+      "title": "Pamplejuce — JUCE/VST3 starter template",
+      "rating": 3.8,
+      "verdict": "Parked",
+      "recommendation": "At scaffold time, start from Pamplejuce and run the pluginval ≥ 5 QA gate per the stack lock."
+    },
+    {
+      "title": "Osmantic ODS",
+      "rating": 3.7,
+      "verdict": "Parked",
+      "recommendation": "Keep it parked until the spare PC becomes an active homelab project, then use ODS as a comparison baseline rather than an automatic install."
+    },
+    {
+      "title": "Higgsfield official API",
+      "rating": 3.6,
+      "verdict": "Parked",
+      "recommendation": "Use it only as a cloud comparison point or a fallback after the local Ref2VA test. Do not fold it into the default pipeline."
+    },
+    {
+      "title": "Odin 2 + Dexed — open-source synth references",
+      "rating": 3.5,
+      "verdict": "Parked",
+      "recommendation": "Reference only. Revisit when instrument design starts."
+    },
+    {
+      "title": "OpenHiggsfield",
+      "rating": 3.4,
+      "verdict": "Parked",
+      "recommendation": "Do not install it. Revisit only when designing a unified local studio front end and borrow the model-catalog and reuse interactions."
+    },
+    {
+      "title": "3D-engine MCP control — Blender / Unreal / Unity",
+      "rating": 3.3,
+      "verdict": "Parked",
+      "recommendation": "Stay parked until a real 3D/agent task appears. Re-read the safety rule before the first run."
+    },
+    {
+      "title": "FlutterFlow",
+      "rating": 3.2,
+      "verdict": "Parked",
+      "recommendation": "Stay parked until a real iOS project appears. Revisit cost math then; the research is done and filed."
+    },
+    {
+      "title": "MetaGPT",
+      "rating": 2.4,
+      "verdict": "Skipped",
+      "recommendation": "Skip the framework. Keep only the SOP vocabulary if the website-build system later needs more formal stage contracts."
+    },
+    {
+      "title": "higgsfield-ai/higgsfield",
+      "rating": 1.2,
+      "verdict": "Skipped",
+      "recommendation": "Leave it skipped. It should not enter the backlog unless model training becomes a real project lane."
+    }
+  ]
+}
