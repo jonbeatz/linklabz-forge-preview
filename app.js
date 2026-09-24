@@ -463,7 +463,6 @@
       document.querySelector(".island-overflow"),
       document.getElementById("nav"),
       document.getElementById("board-layout"),
-      document.getElementById("btn-card-swap"),
       document.getElementById("board-surface"),
       document.getElementById("stats-strip"),
       document.getElementById("island-filters"),
@@ -975,8 +974,6 @@
       });
     });
 
-    document.getElementById("btn-card-swap").addEventListener("click", jumpToCardSwap);
-
     document.getElementById("project-strip").addEventListener("click", (e) => {
       const chip = e.target.closest("[data-project]");
       if (!chip) return;
@@ -1118,11 +1115,6 @@
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
     const boardLayout = document.getElementById("board-layout");
     if (boardLayout) boardLayout.classList.toggle("hidden", !showBoardChrome);
-    const swapJump = document.getElementById("btn-card-swap");
-    if (swapJump) {
-      if (ui.view === "tools") swapJump.setAttribute("aria-current", "location");
-      else swapJump.removeAttribute("aria-current");
-    }
     const filtersActive = !!(
       ui.filterLane || (ui.filterLanes && ui.filterLanes.length) ||
       ui.filterCategory || (ui.filterCategories && ui.filterCategories.length) ||

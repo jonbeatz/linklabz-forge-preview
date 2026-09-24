@@ -681,29 +681,6 @@ a {
   color: var(--gold);
 }
 
-.swap-jump {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-  color: var(--void-0);
-  background: linear-gradient(135deg, var(--gold), var(--amber-deep));
-  font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.01em;
-  box-shadow: 0 4px 18px var(--gold-glow);
-}
-
-.swap-jump:hover {
-  filter: brightness(1.08);
-}
-
-.swap-jump:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 3px;
-}
-
 .canvas-header .tools-swap-hint {
   margin-top: 6px;
   color: var(--gold);
@@ -3004,7 +2981,6 @@ a {
   .swap-tilt { transform: none !important; }
   .cover-board .flow-stage { width: 100% !important; max-width: 100%; }
   .island .layout-toggle button { min-height: 44px; }
-  .swap-jump { min-height: 44px; padding: 8px 16px; }
   .swap-row { gap: 12px; }
   .swap-perspective {
     width: min(210px, calc(100% - 112px));

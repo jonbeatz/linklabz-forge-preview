@@ -726,13 +726,13 @@
           ${megaLink("cover", "▣", "Cover", "Browse Try It, Promoted, and Favorites.")}
           ${megaLink("band", "▥", "Band", "Lab lens — lanes as an image accordion.")}
           ${megaLink("coast", "≋", "Coast", "Lab lens — throw the review strip.")}
-          ${megaLink("swap", "⇄", "Card Swap", "Jump to the Tools stack. Not a board mode.")}
         </div>
         <div class="mega-pane" data-mega-pane="reference" hidden>
           <p class="mega-heading">Reference</p>
           ${megaLink("help", "?", "Forge reference", "Surfaces, keys, and what is experimental.")}
           ${megaLink("palette", "⌘", "Command palette", "Jump, filter, capture a to-do.")}
-          ${megaLink("tools", "⚙", "Tools shelf", "Download, load, reset, and Card Swap.")}
+          ${megaLink("tools", "⚙", "Tools shelf", "Download, load, reset, and the rest of the shelf.")}
+          ${megaLink("swap", "⇄", "Card Swap", "On the Tools shelf. Up to three Try It reviews.")}
         </div>
       </div>`;
     let openTimer = 0;
