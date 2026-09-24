@@ -433,18 +433,57 @@
     return [...root.querySelectorAll(FOCUSABLE_SELECTOR)].filter(isFocusable);
   }
 
-  function setBackgroundInert(on) {
-    const app = document.getElementById("app");
-    if (app) {
-      if (on) {
-        app.setAttribute("inert", "");
-        app.setAttribute("aria-hidden", "true");
-      } else {
-        app.removeAttribute("inert");
-        app.removeAttribute("aria-hidden");
+  function partialLockEls() {
+    const roots = [
+      document.querySelector(".island-brand"),
+      document.querySelector(".island-overflow"),
+      document.getElementById("nav"),
+      document.getElementById("board-layout"),
+      document.getElementById("board-surface"),
+    ].filter(Boolean);
+    const tools = [...document.querySelectorAll("#island-tools button, #island-tools input, #island-tools select")]
+      .filter((el) => el.id !== "btn-help");
+    return [...roots, ...tools];
+  }
+
+  function clearPartialLock() {
+    for (const el of partialLockEls()) {
+      el.removeAttribute("inert");
+      if (el.dataset.dialogLock === "1") {
+        el.removeAttribute("aria-hidden");
+        delete el.dataset.dialogLock;
       }
     }
-    document.body.classList.toggle("scroll-lock", on);
+  }
+
+  function applyDialogBackground() {
+    const app = document.getElementById("app");
+    const open = dialogStack.length > 0;
+    document.body.classList.toggle("scroll-lock", open);
+    if (!open) {
+      clearPartialLock();
+      app?.removeAttribute("inert");
+      app?.removeAttribute("aria-hidden");
+      return;
+    }
+    const drawerOnly = dialogStack.every((entry) => entry.el.id === "drawer");
+    if (drawerOnly) {
+      app?.removeAttribute("inert");
+      app?.removeAttribute("aria-hidden");
+      for (const el of partialLockEls()) {
+        el.setAttribute("inert", "");
+        if (!el.dataset.dialogLock) {
+          el.dataset.dialogLock = "1";
+          el.setAttribute("aria-hidden", "true");
+        }
+      }
+      return;
+    }
+    clearPartialLock();
+    if (app) {
+      app.setAttribute("inert", "");
+      app.setAttribute("aria-hidden", "true");
+    }
   }
 
   function beginDialog(dialogEl, opts = {}) {
@@ -465,7 +504,7 @@
     const picked = typeof opts.initial === "function" ? opts.initial() : opts.initial;
     const target = (picked && dialogEl.contains(picked) && picked) || focusableIn(dialogEl)[0] || dialogEl;
     if (typeof target.focus === "function") target.focus();
-    setBackgroundInert(true);
+    applyDialogBackground();
     requestAnimationFrame(() => {
       if (dialogStack[dialogStack.length - 1]?.el !== dialogEl) return;
       if (dialogEl.contains(document.activeElement)) return;
@@ -482,8 +521,8 @@
       return;
     }
     const [entry] = dialogStack.splice(idx, 1);
+    applyDialogBackground();
     const top = dialogStack[dialogStack.length - 1];
-    if (!top) setBackgroundInert(false);
     const prev = entry.prevFocus;
     if (top) {
       const next = (prev && top.el.contains(prev) && prev) || focusableIn(top.el)[0] || top.el;
@@ -538,12 +577,14 @@
   function openHelp() {
     const backdrop = document.getElementById("help-backdrop");
     const help = document.getElementById("help");
+    const already = dialogStack.some((entry) => entry.el === help);
     backdrop.classList.add("open");
     beginDialog(help, {
       host: backdrop,
       initial: document.getElementById("help-close"),
       close: closeHelp,
     });
+    if (!already) toast("Opened Forge reference · Esc to close");
   }
 
   function closeHelp() {
@@ -1005,6 +1046,12 @@
       }
       if (e.key === "Escape") {
         const top = dialogStack[dialogStack.length - 1];
+        const helpEntry = dialogStack.find((entry) => entry.el.id === "help");
+        if (top?.el?.id === "drawer" && helpEntry?.close) {
+          e.preventDefault();
+          helpEntry.close();
+          return;
+        }
         if (top?.close) {
           e.preventDefault();
           top.close();
@@ -1827,7 +1874,7 @@
             <p>${list.length} card${list.length === 1 ? "" : "s"} · Cover browse · ${scope}</p>
           </div>
         </div>`;
-      if (!list.length) return header + `<div class="empty-state"><p>Nothing in this stack</p><p class="empty-hint">Try It / Promoted / Favorites.</p></div>`;
+      if (!list.length) return header + `<div class="empty-state"><p>Nothing in this stack</p><p class="empty-hint">Cover Browse shows Try It, Promoted, or Favorites. Star or promote a review, or switch the stack filter.</p><button type="button" class="btn-gold" data-empty-browse>Browse Reviews</button><button type="button" class="btn-ghost" data-empty-favorites>Show Favorites</button></div>`;
       return header + renderCoverFlow(list);
     }
     const list = filteredCards();
@@ -2054,7 +2101,7 @@
       ${(() => {
         const spot = spotlightCards();
         if (!spot.length) {
-          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Up to three. Card Swap stays on Tools.</p></div></section>`;
+          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Spotlight holds up to three tools you choose. Pin from Tools — Card Swap stays here, not on the board.</p><p class="empty-hint">Nothing pinned yet.</p></div></section>`;
         }
         return renderCardSwap(spot);
       })()}
@@ -2153,6 +2200,22 @@
     });
     canvas.querySelectorAll("[data-empty-goto-board]").forEach((btn) => {
       btn.addEventListener("click", () => { ui.view = "board"; render(); });
+    });
+    canvas.querySelectorAll("[data-empty-browse]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.view = "board";
+        ui.layout = "sections";
+        render();
+      });
+    });
+    canvas.querySelectorAll("[data-empty-favorites]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.view = "board";
+        ui.layout = "cover";
+        ui.filterFavorites = true;
+        syncFilterChrome();
+        render();
+      });
     });
     canvas.querySelectorAll("[data-btype]").forEach((btn) => {
       btn.addEventListener("click", () => {

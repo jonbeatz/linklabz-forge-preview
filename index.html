@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260924d" />
+  <link rel="stylesheet" href="styles.css?v=20260924e" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -74,9 +74,9 @@
       </nav>
 
       <div class="layout-toggle" id="board-layout" role="group" aria-label="Board layout">
-        <button type="button" class="active" data-layout="sections" title="Lanes">Lanes</button>
-        <button type="button" data-layout="grid" title="Bento">Bento</button>
-        <button type="button" data-layout="cover" title="Cover">Cover</button>
+        <button type="button" class="active" data-layout="sections" title="Magazine lanes (home)">Lanes</button>
+        <button type="button" data-layout="grid" title="Dense compare grid">Bento</button>
+        <button type="button" data-layout="cover" title="Browse lens (Try / Promoted / Favorites)">Cover</button>
       </div>
 
       <div class="island-tools">
@@ -85,7 +85,7 @@
           <span class="search-icon" aria-hidden="true">⌕</span>
           <input type="search" id="search" placeholder="Search…  lane:try project:reWavz" autocomplete="off" enterkeyhint="search" />
         </div>
-        <button type="button" class="btn-ghost-icon help-toggle" id="btn-help" title="Forge reference" aria-label="Forge reference">?</button>
+        <button type="button" class="btn-ghost-icon help-toggle" id="btn-help" title="Forge reference" aria-label="Help">?</button>
         <button type="button" class="kbd-chip" id="btn-cmd-palette" title="Command palette" aria-label="Open command palette">
           <span id="kbd-chip-label">⌘K</span>
         </button>
@@ -99,6 +99,7 @@
       </div>
     </header>
 
+    <div class="board-surface" id="board-surface">
     <!-- Stats strip -->
     <section class="stats-strip" id="stats-strip" aria-label="Summary">
       <div class="stat-pill keep"><span class="stat-n" id="stat-total">0</span><span class="stat-l">reviewed</span></div>
@@ -137,6 +138,7 @@
     <div class="project-strip" id="project-strip" aria-label="Goes-to project filters"></div>
 
     <main class="canvas" id="canvas" tabindex="-1"></main>
+    </div>
   </div>
 
   <!-- Detail drawer -->
@@ -169,49 +171,82 @@
 
   <!-- Forge reference -->
   <div class="help-backdrop" id="help-backdrop" inert>
-    <div class="help-sheet" id="help" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="help-title" tabindex="-1">
+    <div class="help-sheet" id="help" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="help-title" aria-describedby="help-subtitle" tabindex="-1">
       <div class="help-head">
-        <h2 id="help-title">Forge reference</h2>
-        <button type="button" class="drawer-close" id="help-close" aria-label="Close">✕</button>
+        <div class="help-heading">
+          <h2 id="help-title">Forge reference</h2>
+          <p id="help-subtitle">Surfaces + keys. Lanes are home.</p>
+        </div>
+        <button type="button" class="drawer-close" id="help-close" aria-label="Close help">✕</button>
       </div>
       <div class="help-body">
-        <p class="help-intro">Lanes = home. Bento densifies. Cover = optional lens. Spotlight = 3-slot Tools pin — not the board.</p>
+        <p class="help-intro">Operator cheat sheet for LinkLabz Forge. Open anytime from <code>?</code> on the command island — glass lightbox on desktop, full-sheet on mobile. No side key. No extra chrome bar.</p>
 
-        <h3>Keys</h3>
-        <ul class="help-list">
-          <li><kbd>⌘K</kbd> / <kbd>Ctrl</kbd>+<kbd>K</kbd> palette</li>
-          <li><kbd>Esc</kbd> closes topmost</li>
-          <li><kbd>↑</kbd><kbd>↓</kbd> / <kbd>Enter</kbd> in palette</li>
-          <li>Operators <code>lane:</code> <code>project:</code> <code>hardware:</code> <code>found:</code> <code>action:</code></li>
-          <li>Lanes | Bento | Cover toggle</li>
-          <li>Cover <kbd>←</kbd><kbd>→</kbd></li>
-          <li><code>todo</code> / <code>t</code> capture</li>
-          <li>Download / Load / ⋯ Reset</li>
+        <h3 id="help-surfaces">Surfaces</h3>
+        <div class="help-surface">
+          <p><strong>Lanes</strong> — Canonical home — decide where each review lives.</p>
+          <p class="help-use">Drop three stem-splitter links into Inbox in the morning; by lunch two are Try It, one is Skipped with a one-line why — board stays honest without a chat dump. <span class="help-tip">Tip: Filters and <code>lane:</code> search act on this model. Don’t invent a fifth “maybe” lane.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Bento</strong> — Same lane model, denser grid — compare cards side by side.</p>
+          <p class="help-use">Flip to Bento when ranking three “Try It” VST tools; scan ratings and Goes-to chips without scrolling magazine rows. <span class="help-tip">Tip: Toggle back to Lanes when you’re triaging, not comparing.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Cover Browse</strong> — Optional Browse lens over Try / Promoted / Favorites — still opens the same detail drawer.</p>
+          <p class="help-use">Flip through Promoted favorites like a short stack before a Cursor session; pick one, open drawer, copy the brief. <span class="help-tip">Tip: No floor reflection. Cover is a lens, not a second board. ← → moves the stack when Cover is on.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Reviews</strong> — Full review cards — verdict, rating, recommendation, cherry-picks, Cursor brief.</p>
+          <p class="help-use">Open StemKit parked as “inspect only”; copy bridge note into Shared Notes without rebuilding the write-up. <span class="help-tip">Tip: Protected seeds lock so Reset doesn’t wipe harvest you already trust.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Bookmarks</strong> — Typed quick-saves when a full review ceremony is overkill.</p>
+          <p class="help-use">Save a Divi tutorial as Tutorial + one-line note; graduate to a Review later if it earns a verdict. <span class="help-tip">Tip: Duplicate URL guard is on — don’t fight it; update the existing bookmark instead.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Spitballs</strong> — Raw ideas before they deserve a lane.</p>
+          <p class="help-use">Capture “Explorer Fast Copy toggle + parallel jobs” mid-chat; Graduate → Inbox when you’re ready to review for real. <span class="help-tip">Tip: Spitballs aren’t decisions. If it has a verdict, it’s a Review.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>To-do</strong> — Action queue tied to projects — severity, park, inline edit, clear done.</p>
+          <p class="help-use">After Evaluate on a card, accept the linked to-do; filter High + Active before a Vader build block. <span class="help-tip">Tip: Palette capture: <code>todo buy coffee</code> or <code>t buy coffee</code> then Enter.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Detail drawer</strong> — Sticky amber strip for one card — lane, evidence, markdown, bridge note, linked to-do.</p>
+          <p class="help-use">Check evidence, Copy Markdown into a Bridge doc, leave the list context behind the drawer. <span class="help-tip">Tip: Esc closes drawer (and palette/modal/help first if those are open).</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Command island</strong> — Search, shelf jump, Download/Load, session chip, <code>?</code> Help, and the ⌘K / Ctrl+K palette.</p>
+          <p class="help-use">Type <code>lane:try</code> or <code>project:reWavz</code> without hunting filter chips; run “Toggle layout → Bento” from the palette mid-flow. <span class="help-tip">Tip: Session · Dirty means Download before a risky Load/Reset. Help lives on the island — tap <code>?</code>, don’t look for a side panel.</span></p>
+        </div>
+        <div class="help-surface">
+          <p><strong>Tools Spotlight</strong> — Manual spotlight of up to three tools — Card Swap UI lives here only, not on the main board.</p>
+          <p class="help-use">Pin RoboSync, UVR GUI, and Noizefield for a “this week’s trial stack” strip on the Tools shelf. <span class="help-tip">Tip: Max 3, manual curation. Never auto-rotate the main Lanes board into Card Swap.</span></p>
+        </div>
+
+        <h3>Keyboard &amp; controls</h3>
+        <ul class="help-keys">
+          <li><span>Open Help</span><span><code>?</code> on command island</span></li>
+          <li><span>Command palette</span><span><kbd>⌘K</kbd> (Mac) / <kbd>Ctrl</kbd>+<kbd>K</kbd> (Win/Linux)</span></li>
+          <li><span>Close Help / palette / drawer / modal</span><span><kbd>Esc</kbd> (topmost first)</span></li>
+          <li><span>Palette navigate</span><span><kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Enter</kbd> to run</span></li>
+          <li><span>Search operators (board)</span><span><code>lane:</code> <code>project:</code> <code>hardware:</code> <code>found:</code> <code>action:</code></span></li>
+          <li><span>Examples</span><span><code>lane:try</code> · <code>project:reWavz</code> · <code>hardware:rtx</code></span></li>
+          <li><span>Layout toggle</span><span>Lanes | Bento | Cover</span></li>
+          <li><span>Cover Browse</span><span><kbd>←</kbd> <kbd>→</kbd> when Cover lens is active</span></li>
+          <li><span>To-do capture (palette)</span><span><code>todo …</code> or <code>t …</code> then Enter</span></li>
+          <li><span>Workspace</span><span>Download / Load on the island · Reset to seed under ⋯</span></li>
         </ul>
 
-        <h3>Experimental</h3>
+        <h3>What’s experimental</h3>
         <ul class="help-list">
-          <li>Cover Browse</li>
-          <li>Tools Spotlight (Card Swap, max 3)</li>
-          <li>Load replaces (no merge yet)</li>
-          <li>Muse master stays Trinity’s</li>
+          <li><strong>Cover Browse</strong> — optional Try / Promoted / Favorites lens; same drawer; no floor reflection.</li>
+          <li><strong>Tools Spotlight (Card Swap)</strong> — max 3 manual pins on Tools only. Not the main board.</li>
+          <li><strong>Load workspace</strong> — replaces the current board (no merge/upsert yet). Download first.</li>
+          <li><strong>Master Muse</strong> — Trinity’s board remains source of truth until Jon says otherwise. Forge is the amber Pages challenger.</li>
         </ul>
-
-        <h3>Sections</h3>
-        <dl class="help-map">
-          <div><dt>Lanes</dt><dd>Home board. Inbox, Try It, Parked, and Skipped stay in columns.</dd></div>
-          <div><dt>Bento</dt><dd>Same reviews, packed denser.</dd></div>
-          <div><dt>Cover</dt><dd>Optional lens. Try It, Promoted, and Favorites first. Snap opens the drawer.</dd></div>
-          <div><dt>Reviews</dt><dd>Graded links, with verdict, rating, recommendation, and action on the card.</dd></div>
-          <div><dt>Bookmarks</dt><dd>Saved links that are not reviews yet.</dd></div>
-          <div><dt>Spitballs</dt><dd>Loose ideas. Graduate one into Inbox.</dd></div>
-          <div><dt>To-do</dt><dd>The queue. Capture with <code>todo</code> or <code>t</code> in the palette.</dd></div>
-          <div><dt>Drawer</dt><dd>Review detail sheet for the open card.</dd></div>
-          <div><dt>Island</dt><dd>Search, palette, layout, Download, Load, and Reset.</dd></div>
-          <div><dt>Spotlight</dt><dd>Up to three Try It pins under Tools. Card Swap stays there.</dd></div>
-        </dl>
       </div>
-      <p class="help-foot">Preview · localStorage <code>linklabz-forge-v1.2</code> · not cloud-synced</p>
+      <p class="help-foot">Preview · <code>linklabz-forge-v1.2</code> · not cloud-synced</p>
     </div>
   </div>
 
@@ -226,6 +261,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260924d"></script>
+  <script src="app.js?v=20260924e"></script>
 </body>
 </html>
