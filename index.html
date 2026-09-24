@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260924c" />
+  <link rel="stylesheet" href="styles.css?v=20260924d" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -74,9 +74,9 @@
       </nav>
 
       <div class="layout-toggle" id="board-layout" role="group" aria-label="Board layout">
-        <button type="button" class="active" data-layout="sections" title="Magazine lanes">Lanes</button>
-        <button type="button" data-layout="grid" title="Bento grid">Bento</button>
-        <button type="button" data-layout="cover" title="Cover flow browse">Cover</button>
+        <button type="button" class="active" data-layout="sections" title="Lanes">Lanes</button>
+        <button type="button" data-layout="grid" title="Bento">Bento</button>
+        <button type="button" data-layout="cover" title="Cover">Cover</button>
       </div>
 
       <div class="island-tools">
@@ -85,6 +85,7 @@
           <span class="search-icon" aria-hidden="true">⌕</span>
           <input type="search" id="search" placeholder="Search…  lane:try project:reWavz" autocomplete="off" enterkeyhint="search" />
         </div>
+        <button type="button" class="btn-ghost-icon help-toggle" id="btn-help" title="Forge reference" aria-label="Forge reference">?</button>
         <button type="button" class="kbd-chip" id="btn-cmd-palette" title="Command palette" aria-label="Open command palette">
           <span id="kbd-chip-label">⌘K</span>
         </button>
@@ -166,6 +167,54 @@
     </div>
   </div>
 
+  <!-- Forge reference -->
+  <div class="help-backdrop" id="help-backdrop" inert>
+    <div class="help-sheet" id="help" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="help-title" tabindex="-1">
+      <div class="help-head">
+        <h2 id="help-title">Forge reference</h2>
+        <button type="button" class="drawer-close" id="help-close" aria-label="Close">✕</button>
+      </div>
+      <div class="help-body">
+        <p class="help-intro">Lanes = home. Bento densifies. Cover = optional lens. Spotlight = 3-slot Tools pin — not the board.</p>
+
+        <h3>Keys</h3>
+        <ul class="help-list">
+          <li><kbd>⌘K</kbd> / <kbd>Ctrl</kbd>+<kbd>K</kbd> palette</li>
+          <li><kbd>Esc</kbd> closes topmost</li>
+          <li><kbd>↑</kbd><kbd>↓</kbd> / <kbd>Enter</kbd> in palette</li>
+          <li>Operators <code>lane:</code> <code>project:</code> <code>hardware:</code> <code>found:</code> <code>action:</code></li>
+          <li>Lanes | Bento | Cover toggle</li>
+          <li>Cover <kbd>←</kbd><kbd>→</kbd></li>
+          <li><code>todo</code> / <code>t</code> capture</li>
+          <li>Download / Load / ⋯ Reset</li>
+        </ul>
+
+        <h3>Experimental</h3>
+        <ul class="help-list">
+          <li>Cover Browse</li>
+          <li>Tools Spotlight (Card Swap, max 3)</li>
+          <li>Load replaces (no merge yet)</li>
+          <li>Muse master stays Trinity’s</li>
+        </ul>
+
+        <h3>Sections</h3>
+        <dl class="help-map">
+          <div><dt>Lanes</dt><dd>Home board. Inbox, Try It, Parked, and Skipped stay in columns.</dd></div>
+          <div><dt>Bento</dt><dd>Same reviews, packed denser.</dd></div>
+          <div><dt>Cover</dt><dd>Optional lens. Try It, Promoted, and Favorites first. Snap opens the drawer.</dd></div>
+          <div><dt>Reviews</dt><dd>Graded links, with verdict, rating, recommendation, and action on the card.</dd></div>
+          <div><dt>Bookmarks</dt><dd>Saved links that are not reviews yet.</dd></div>
+          <div><dt>Spitballs</dt><dd>Loose ideas. Graduate one into Inbox.</dd></div>
+          <div><dt>To-do</dt><dd>The queue. Capture with <code>todo</code> or <code>t</code> in the palette.</dd></div>
+          <div><dt>Drawer</dt><dd>Review detail sheet for the open card.</dd></div>
+          <div><dt>Island</dt><dd>Search, palette, layout, Download, Load, and Reset.</dd></div>
+          <div><dt>Spotlight</dt><dd>Up to three Try It pins under Tools. Card Swap stays there.</dd></div>
+        </dl>
+      </div>
+      <p class="help-foot">Preview · localStorage <code>linklabz-forge-v1.2</code> · not cloud-synced</p>
+    </div>
+  </div>
+
   <!-- Modal -->
   <div class="modal-backdrop" id="modal-backdrop" role="presentation" inert>
     <div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" tabindex="-1">
@@ -177,6 +226,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260924c"></script>
+  <script src="app.js?v=20260924d"></script>
 </body>
 </html>

@@ -460,6 +460,7 @@
       el: dialogEl,
       host,
       prevFocus: document.activeElement,
+      close: typeof opts.close === "function" ? opts.close : null,
     });
     const picked = typeof opts.initial === "function" ? opts.initial() : opts.initial;
     const target = (picked && dialogEl.contains(picked) && picked) || focusableIn(dialogEl)[0] || dialogEl;
@@ -531,7 +532,23 @@
     backdrop.classList.add("open");
     input.value = "";
     renderPaletteResults();
-    beginDialog(palette, { host: backdrop, initial: input });
+    beginDialog(palette, { host: backdrop, initial: input, close: closePalette });
+  }
+
+  function openHelp() {
+    const backdrop = document.getElementById("help-backdrop");
+    const help = document.getElementById("help");
+    backdrop.classList.add("open");
+    beginDialog(help, {
+      host: backdrop,
+      initial: document.getElementById("help-close"),
+      close: closeHelp,
+    });
+  }
+
+  function closeHelp() {
+    document.getElementById("help-backdrop").classList.remove("open");
+    endDialog(document.getElementById("help"));
   }
 
   function closePalette() {
@@ -895,6 +912,11 @@
     });
 
     document.getElementById("btn-cmd-palette").addEventListener("click", openPalette);
+    document.getElementById("btn-help").addEventListener("click", openHelp);
+    document.getElementById("help-close").addEventListener("click", closeHelp);
+    document.getElementById("help-backdrop").addEventListener("click", (e) => {
+      if (e.target.id === "help-backdrop") closeHelp();
+    });
 
     const moreBtn = document.getElementById("btn-more");
     const moreDrop = document.getElementById("more-dropdown");
@@ -964,6 +986,7 @@
         runPaletteItem(ui.paletteIndex);
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         closePalette();
       }
     });
@@ -981,11 +1004,11 @@
         return;
       }
       if (e.key === "Escape") {
-        if (ui.paletteOpen) { closePalette(); return; }
-        if (document.getElementById("modal-backdrop").classList.contains("open")) {
-          closeModal(); return;
+        const top = dialogStack[dialogStack.length - 1];
+        if (top?.close) {
+          e.preventDefault();
+          top.close();
         }
-        if (ui.drawerId) closeDrawer();
       }
     });
   }
@@ -1804,7 +1827,7 @@
             <p>${list.length} card${list.length === 1 ? "" : "s"} · Cover browse · ${scope}</p>
           </div>
         </div>`;
-      if (!list.length) return header + `<div class="empty-state"><p>No cards match filters.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
+      if (!list.length) return header + `<div class="empty-state"><p>Nothing in this stack</p><p class="empty-hint">Try It / Promoted / Favorites.</p></div>`;
       return header + renderCoverFlow(list);
     }
     const list = filteredCards();
@@ -2031,7 +2054,7 @@
       ${(() => {
         const spot = spotlightCards();
         if (!spot.length) {
-          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No Try It reviews to spotlight.</p></div></section>`;
+          return `<section class="concept-block spotlight-block" id="spotlight"><div class="concept-block-head"><h3>${brandTitle("Spotlight")}</h3><span class="concept-test-badge">Experimental</span></div><div class="empty-state"><p>No tools pinned</p><p class="empty-hint">Up to three. Card Swap stays on Tools.</p></div></section>`;
         }
         return renderCardSwap(spot);
       })()}
@@ -2600,6 +2623,7 @@
     beginDialog(drawer, {
       host: drawer,
       initial: document.getElementById("drawer-close"),
+      close: closeDrawer,
     });
 
     document.getElementById("d-copy-brief").addEventListener("click", () => {
@@ -2746,6 +2770,7 @@
     backdrop.classList.add("open");
     beginDialog(modal, {
       host: backdrop,
+      close: closeModal,
       initial: () => {
         const body = document.getElementById("modal-body");
         const field = body && body.querySelector("input, select, textarea");
