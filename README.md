@@ -1,47 +1,67 @@
-# LinkLabz Forge
+# ⚡ LinkLabz — Forge Preview
 
-Brand-new charcoal **+ amber + gold** link review board — a visual reimagine of the Muse LinkLabz board (Ravyn successor layout, not a clone). GodUI-inspired motion/glass feel without GodUI branding.
+> Ravyn's amber/charcoal rebuild of Jon's **LinkLabz** link-review board — magazine
+> lanes, command palette, to-do queue, and a Muse-parity workflow tuned for
+> harvesting links worth stealing.
 
-**Product:** LinkLabz Forge · `v1`  
-**Storage key:** `linklabz-forge-v1`  
-**Stack:** static SPA — `index.html` · `styles.css` · `app.js` · `data/seed.json` (no build step)
+[![GitHub Pages](https://img.shields.io/github/deployments/jonbeatz/linklabz-forge-preview?label=github%20pages)](https://jonbeatz.github.io/linklabz-forge-preview/)
+[![Last commit](https://img.shields.io/github/last-commit/jonbeatz/linklabz-forge-preview)](https://github.com/jonbeatz/linklabz-forge-preview/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/jonbeatz/linklabz-forge-preview)](https://github.com/jonbeatz/linklabz-forge-preview)
+![Static site](https://img.shields.io/badge/site-static%20html%2Fcss%2Fjs-blue)
 
-## How to open
+**🚀 Live preview:** https://jonbeatz.github.io/linklabz-forge-preview/
 
-From this directory:
+![LinkLabz Forge preview](assets/screenshot.png)
 
-```bash
-cd /workspace/linklabz-forge
-python3 -m http.server 8770
+## What's inside
+
+- **Floating command island** — search, ⌘K palette, Download/Load workspace, and a quiet ⋯ for Reset to seed.
+- **Magazine lanes** — Inbox / Try It / Parked / Skipped with bento toggle, project chips, and operator search (`lane:`, `project:`, `hardware:`, `found:`, `action:`).
+- **Full shelves** — Reviews, Bookmarks (typed), Spitballs (graduate → Inbox), To-do (project, severity, park, inline edit, clear done), Favorites, Tools.
+- **Detail drawer** — sticky amber strip, Copy Markdown / bridge note, linked to-do, evidence checklist, protected-seed lock, Evaluate → add to-do prompt.
+- **DM Sans + Mulish** wordmark treatment — white lead + amber italic accent on section and lane titles.
+- **PWA-ready** — Add to Home Screen manifest + icons; Session · Clean/Dirty chip.
+- **Full dataset preserved** — **19 reviews**, **7 bookmarks**, **8 spitballs**, **7 to-dos** (Muse snapshot + Trinity staged package + spitball parking lot).
+
+## Tech stack
+
+| Layer   | Choice                                                                  |
+| ------- | ----------------------------------------------------------------------- |
+| Markup  | `index.html` + `styles.css` + `app.js` (no build step)                  |
+| Runtime | Browser only — serve via static host / GitHub Pages                     |
+| Hosting | GitHub Pages from `main` (`.nojekyll`, no Jekyll pass)                  |
+| Data    | `data/seed.json` → `localStorage` (`linklabz-forge-v1.2`); lanes: Reviews / Bookmarks / Spitballs / To-do |
+
+## Project structure
+
+```text
+linklabz-forge-preview/
+├── index.html              # app shell
+├── styles.css              # amber / charcoal forge theme
+├── app.js                  # board logic + shelves + palette
+├── manifest.webmanifest    # PWA / home-screen
+├── data/
+│   └── seed.json           # reviews · bookmarks · spitballs · todos
+├── assets/
+│   └── screenshot.png      # README hero shot
+├── .nojekyll               # tell Pages to serve files as-is
+└── README.md
 ```
 
-Then open [http://localhost:8770](http://localhost:8770).  
-(`file://` will fail seed load — fetch needs a static server.)
+## Workflow — branches, not overwrites
 
-## Features
+`main` always mirrors the latest approved build. Every change gets cut as a
+**new branch** off `main` and lands via PR. Nothing is silently replaced on
+`main`.
 
-- **Views:** Reviews board · Bookmarks · Spitballs · To-do · Favorites
-- **Lanes:** Try It / Parked / Skipped (magazine columns or bento grid)
-- **Per review:** title, URL, category, stars, recommendation, cherry-picks, Cursor brief (copyable), goes-to project, action picker, favorite, promote, screenshot/comp slot, site preview when URL looks previewable
-- **Search + filters:** lane, category, promoted, favorites · sort rating / newest / A–Z
-- **Layout toggle:** Lanes (sections) ↔ Bento (grid)
-- **Project strip:** goes-to filters
-- **Detail drawer:** slides from right with sticky gold strip (editable stars + lane pills + action)
-- **⌘K / Ctrl+K** command palette — jump, filter, set lane, add, export
-- **Add:** review / bookmark / spitball / to-do
-- **Persistence:** localStorage + JSON export/import + reset to seed
-- **Stats strip:** try / parked / skipped / briefs / promoted / favorites counts
-- **Seed:** 20 reviews — Muse live titles/recs/verdicts merged in (plus Rundown); Cursor briefs retained from Ravyn where available
-- **Import-friendly:** workspace shape `{ version, reviews|cards, bookmarks, spitballs, todos }`
-- **Muse merge:** `data/muse-workspace.json` (live titles/recs) already merged into seed; drop a newer Muse export into `data/` and re-import via the UI if needed
+## Use this repo as a template
 
-## Design notes
+Same house pattern as the Trinity preview:
 
-- Void charcoal (`#0B0C0F`–`#16181D`) with amber mesh glow
-- Accents: `#F5C15C` · `#E8A317` · `#FFD78A` (no Trinity red/cyan, no purple)
-- Display: Instrument Serif · UI: IBM Plex Sans
-- Floating top command island (no left rail) · glass panels · hover lift · stagger reveals · prefers-reduced-motion respected
-
-## Not deployed
-
-Local bake-off only until Jon green-lights a deploy.
+1. Title + one-line description of whose build it is and what changed.
+2. Badge row: Pages deploy status, last commit, repo size, site type.
+3. Live preview link, then a real screenshot (`assets/screenshot.png`).
+4. "What's inside" — the feature list in plain language.
+5. "Tech stack" — the table above; keep it honest and short.
+6. "Project structure" — the tree, so the next person knows where things live.
+7. "Workflow" — the branching rule, so `main` never gets quietly overwritten.
