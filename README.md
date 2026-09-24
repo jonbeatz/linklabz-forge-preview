@@ -22,6 +22,15 @@
 - **DM Sans + Mulish** wordmark treatment — white lead + amber italic accent on section and lane titles.
 - **PWA-ready** — Add to Home Screen manifest + icons; Session · Clean/Dirty chip.
 - **Full dataset preserved** — **19 reviews**, **7 bookmarks**, **8 spitballs**, **7 to-dos** (Muse snapshot + Trinity staged package + spitball parking lot).
+- **Concepts (test)** — GodUI-inspired Card Swap and Cover Flow, fed by the same review cards. Experimental only; Reviews still defaults to Lanes and Bento.
+
+## Test layouts
+
+Open the **Concepts** pill (or command palette → Concepts). These are vanilla CSS/JS ports of the GodUI card-swap stack and cover-flow carousel — not a new production board.
+
+- **Card Swap** — fixed 3D stack of the top-rated reviews, auto-advances, pauses on hover, prev/next. Click the front card to open the detail drawer.
+- **Cover Flow** — drag with momentum, click a side card, or use prev/next and arrow keys when the stage is focused. Click the centered card to open it.
+- `prefers-reduced-motion` flattens both: instant swaps with no tilt, and a flat cross-fade instead of the 3D spin.
 
 ## Tech stack
 

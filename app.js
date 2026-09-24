@@ -71,6 +71,8 @@
     searchOpen: false,
     todoStatusFilter: "all",
     todoProjectFilter: "",
+    conceptSwapOrder: null,
+    conceptFlowId: null,
   };
 
   /** @type {string|null} */
@@ -450,6 +452,7 @@
       { id: "spitballs", label: "Spitballs", icon: "◎" },
       { id: "todo", label: "To-do", icon: "☑" },
       { id: "tools", label: "Tools", icon: "⚒" },
+      { id: "concepts", label: "Concepts", icon: "✧" },
     ];
     for (const v of views) {
       if (match(`jump to ${v.label}`) || match(v.label)) {
@@ -885,6 +888,7 @@
       : ui.view === "spitballs" ? "Search spitballs…"
       : ui.view === "todo" ? "Search to-dos…"
       : ui.view === "tools" ? "Tools shelf"
+      : ui.view === "concepts" ? "Search reviews in test layouts…"
       : "Search favorites…";
 
     const addBtn = document.getElementById("btn-add-card");
@@ -934,6 +938,8 @@
     document.getElementById("count-favorites").textContent = String(favCards + favBm);
     document.getElementById("count-spitballs").textContent = String(state.spitballs.length);
     document.getElementById("count-todo").textContent = String(state.todos.filter((t) => !t.done).length);
+    const conceptCount = document.getElementById("count-concepts");
+    if (conceptCount) conceptCount.textContent = String(state.cards.length);
 
     document.getElementById("stat-total").textContent = String(state.cards.length);
     document.getElementById("stat-try").textContent = String(state.cards.filter((c) => c.lane === "try").length);
@@ -945,6 +951,7 @@
   }
 
   function renderCanvas() {
+    stopConceptMotion();
     const canvas = document.getElementById("canvas");
     if (ui.view === "board") canvas.innerHTML = renderBoard();
     else if (ui.view === "bookmarks") canvas.innerHTML = renderBookmarks();
@@ -952,6 +959,7 @@
     else if (ui.view === "spitballs") canvas.innerHTML = renderSpitballs();
     else if (ui.view === "todo") canvas.innerHTML = renderTodos();
     else if (ui.view === "tools") canvas.innerHTML = renderTools();
+    else if (ui.view === "concepts") canvas.innerHTML = renderConcepts();
     wireCanvasEvents(canvas);
   }
 
@@ -976,6 +984,674 @@
           ${cherries.length ? `<span class="badge">${cherries.length} cherry-pick${cherries.length > 1 ? "s" : ""}</span>` : ""}
         </div>
       </article>`;
+  }
+
+  /* GodUI-inspired test layouts (vanilla CSS transforms + rAF). Not the production board. */
+  let conceptCleanups = [];
+
+  function stopConceptMotion() {
+    for (const fn of conceptCleanups) {
+      try { fn(); } catch (_) { /* teardown is best-effort */ }
+    }
+    conceptCleanups = [];
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function urlHost(url) {
+    const raw = String(url || "").trim();
+    if (!raw || raw === "#") return "no link";
+    try {
+      return new URL(raw).host.replace(/^www\./, "");
+    } catch {
+      return raw.replace(/^https?:\/\//i, "").split("/")[0] || "link";
+    }
+  }
+
+  function laneName(id) {
+    return LANES.find((l) => l.id === id)?.label || "Inbox";
+  }
+
+  function conceptCards() {
+    let list = [...state.cards];
+    const ops = parseSearchQuery(ui.search);
+    if (ops.lane || ops.project || ops.hardware || ops.found || ops.action || ops.text) {
+      list = list.filter((c) => cardMatchesOps(c, ops));
+    }
+    list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(a.title).localeCompare(String(b.title)));
+    return list;
+  }
+
+  function ratingBits(c) {
+    const n = Number(c.rating);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    const label = Number.isInteger(n) ? String(n) : n.toFixed(1);
+    return `${starsHtml(n)}<span class="concept-rating">${escapeHtml(label)}</span>`;
+  }
+
+  function conceptFace(c) {
+    const snippet = String(c.gradingSummary || c.recommendation || "").trim();
+    const rate = ratingBits(c);
+    return `
+      <div class="concept-card-face">
+        <div class="concept-card-top">
+          <span class="badge lane-chip ${escapeHtml(c.lane || "inbox")}">${escapeHtml(laneName(c.lane))}</span>
+          <span class="badge cat">${escapeHtml(c.category || "—")}</span>
+        </div>
+        <p class="concept-title">${escapeHtml(c.title)}</p>
+        ${rate ? `<div class="concept-rate">${rate}</div>` : ""}
+        <p class="concept-snippet">${escapeHtml(snippet || "No grading note yet.")}</p>
+        <p class="concept-host">${escapeHtml(urlHost(c.url))}</p>
+      </div>`;
+  }
+
+  function renderConcepts() {
+    const list = conceptCards();
+    const header = `
+      <div class="canvas-header">
+        <div>
+          <h2>${brandTitle("Test layouts")}</h2>
+          <p>GodUI-inspired concepts — not the production default. Reviews still opens on Lanes and Bento.</p>
+        </div>
+      </div>
+      <div class="concept-banner" role="note">
+        <span class="concept-test-badge">Experimental</span>
+        <span>Same review cards as the board. Card Swap and Cover Flow are test layouts only.</span>
+      </div>`;
+    if (!list.length) {
+      return header + `<div class="empty-state"><p>No reviews match this search.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
+    }
+    const jump = `
+      <nav class="concept-jump" aria-label="Test layouts">
+        <a href="#concept-swap">Card Swap</a>
+        <a href="#concept-flow">Cover Flow</a>
+      </nav>`;
+    return header + jump + renderCardSwap(list.slice(0, 5)) + renderCoverFlow(list);
+  }
+
+  function renderCardSwap(list) {
+    const cards = list.map((c) => `
+      <div class="swap-card" data-swap-card data-review-id="${escapeHtml(c.id)}" data-title="${escapeHtml(c.title)}">
+        <button type="button" class="concept-hit">${conceptFace(c)}</button>
+      </div>`).join("");
+    return `
+      <section class="concept-block" id="concept-swap" aria-labelledby="concept-swap-title">
+        <div class="concept-block-head">
+          <h3 id="concept-swap-title">${brandTitle("Card Swap")}</h3>
+          <p>3D stack · auto-advances about every 3.5s · pauses on hover · ${list.length} visible</p>
+        </div>
+        <div class="swap-stage" data-card-swap tabindex="0" role="group" aria-roledescription="carousel" aria-label="Card swap">
+          <p class="sr-only" data-swap-live aria-live="polite"></p>
+          <div class="swap-row">
+            <button type="button" class="concept-nav" data-swap-prev aria-label="Previous card">‹</button>
+            <div class="swap-perspective">
+              <div class="swap-tilt">${cards}</div>
+            </div>
+            <button type="button" class="concept-nav" data-swap-next aria-label="Next card">›</button>
+          </div>
+          <div class="concept-count" data-swap-count>1 / ${list.length}</div>
+        </div>
+      </section>`;
+  }
+
+  function renderCoverFlow(list) {
+    const slides = list.map((c, i) => `
+      <div class="flow-item" data-flow-index="${i}" data-review-id="${escapeHtml(c.id)}" data-title="${escapeHtml(c.title)}">
+        <button type="button" class="concept-hit">${conceptFace(c)}</button>
+        <div class="flow-reflect" aria-hidden="true">${conceptFace(c)}</div>
+      </div>`).join("");
+    return `
+      <section class="concept-block" id="concept-flow" aria-labelledby="concept-flow-title">
+        <div class="concept-block-head">
+          <h3 id="concept-flow-title">${brandTitle("Cover Flow")}</h3>
+          <p>Drag to flick · click a side card to center it · arrow keys when this stage is focused · ${list.length} reviews</p>
+        </div>
+        <div class="flow-wrap" data-cover-flow>
+          <p class="sr-only" data-flow-live aria-live="polite"></p>
+          <div class="flow-stage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Cover flow">${slides}</div>
+          <div class="concept-controls">
+            <button type="button" class="concept-nav" data-flow-prev aria-label="Previous slide">‹</button>
+            <span class="concept-count" data-flow-count>1 / ${list.length}</span>
+            <button type="button" class="concept-nav" data-flow-next aria-label="Next slide">›</button>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function mountConceptLayouts(canvas) {
+    const swap = canvas.querySelector("[data-card-swap]");
+    const flow = canvas.querySelector("[data-cover-flow]");
+    if (swap) mountCardSwap(swap);
+    if (flow) mountCoverFlow(flow);
+  }
+
+  function mountCardSwap(root) {
+    const reduce = prefersReducedMotion();
+    const cards = [...root.querySelectorAll("[data-swap-card]")];
+    const n = cards.length;
+    const prevBtn = root.querySelector("[data-swap-prev]");
+    const nextBtn = root.querySelector("[data-swap-next]");
+    const countEl = root.querySelector("[data-swap-count]");
+    const live = root.querySelector("[data-swap-live]");
+    const tilt = root.querySelector(".swap-tilt");
+    if (!n || !tilt) return;
+
+    const OFFSET_X = 22;
+    const OFFSET_Y = 28;
+    const SCALE_STEP = 0.06;
+    const ids = cards.map((el) => el.dataset.reviewId);
+    let order = ids.map((_, i) => i);
+    if (Array.isArray(ui.conceptSwapOrder) && ui.conceptSwapOrder.length) {
+      const saved = ui.conceptSwapOrder.filter((id) => ids.includes(id));
+      const rest = ids.filter((id) => !saved.includes(id));
+      const seq = [...saved, ...rest];
+      if (seq.length === n) order = seq.map((id) => ids.indexOf(id));
+    }
+
+    let paused = false;
+    let hovering = false;
+    let focused = false;
+    let timer = 0;
+    let tiltRaf = 0;
+    let tx = 0;
+    let ty = 0;
+    let gx = 0;
+    let gy = 0;
+
+    function remember() {
+      ui.conceptSwapOrder = order.map((i) => ids[i]);
+    }
+
+    function stopTimer() {
+      if (timer) clearInterval(timer);
+      timer = 0;
+    }
+
+    function startTimer() {
+      stopTimer();
+      if (reduce || n < 2 || paused) return;
+      timer = setInterval(() => advance(false), 3500);
+    }
+
+    function syncPause() {
+      const next = hovering || focused;
+      if (next === paused) return;
+      paused = next;
+      if (paused) stopTimer();
+      else startTimer();
+    }
+
+    function apply(fromUser) {
+      const rankOf = new Array(n);
+      order.forEach((itemIndex, rank) => { rankOf[itemIndex] = rank; });
+      const activeEl = document.activeElement;
+      cards.forEach((el, i) => {
+        const r = rankOf[i] ?? 0;
+        const btn = el.querySelector(".concept-hit");
+        const x = r * OFFSET_X;
+        const y = -r * OFFSET_Y;
+        const scale = 1 - r * SCALE_STEP;
+        const rot = reduce ? 0 : r * -2.5;
+        el.style.zIndex = String(n - r);
+        el.style.pointerEvents = r === 0 ? "auto" : "none";
+        el.style.transition = reduce
+          ? "none"
+          : "transform 620ms cubic-bezier(0.22, 1.15, 0.36, 1), opacity 420ms ease";
+        el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${rot}deg) scale(${scale})`;
+        el.style.opacity = r > 4 ? "0" : "1";
+        el.classList.toggle("is-front", r === 0);
+        el.setAttribute("aria-hidden", r === 0 ? "false" : "true");
+        if (btn) {
+          btn.tabIndex = r === 0 ? 0 : -1;
+          const title = el.dataset.title || "Review";
+          btn.setAttribute("aria-label", r === 0 ? `Open ${title}` : title);
+        }
+      });
+      const front = order[0];
+      if (countEl) countEl.textContent = `${front + 1} / ${n}`;
+      if (prevBtn) prevBtn.disabled = n < 2;
+      if (nextBtn) nextBtn.disabled = n < 2;
+      remember();
+      if (fromUser && live) {
+        live.textContent = `${cards[front].dataset.title || "Review"}, ${front + 1} of ${n}`;
+      }
+      if (
+        fromUser &&
+        activeEl &&
+        activeEl.classList.contains("concept-hit") &&
+        root.contains(activeEl)
+      ) {
+        const frontBtn = cards[front].querySelector(".concept-hit");
+        if (frontBtn) frontBtn.focus();
+      }
+    }
+
+    function advance(fromUser) {
+      if (n < 2) return;
+      order = [...order.slice(1), order[0]];
+      apply(fromUser);
+    }
+
+    function retreat(fromUser) {
+      if (n < 2) return;
+      order = [order[order.length - 1], ...order.slice(0, -1)];
+      apply(fromUser);
+    }
+
+    function tiltTick() {
+      tx += (gx - tx) * 0.18;
+      ty += (gy - ty) * 0.18;
+      tilt.style.transform = `rotateX(${tx.toFixed(2)}deg) rotateY(${ty.toFixed(2)}deg)`;
+      if (Math.abs(gx - tx) > 0.05 || Math.abs(gy - ty) > 0.05) {
+        tiltRaf = requestAnimationFrame(tiltTick);
+      } else {
+        tilt.style.transform = `rotateX(${gx}deg) rotateY(${gy}deg)`;
+        tiltRaf = 0;
+      }
+    }
+
+    function kickTilt() {
+      if (reduce) return;
+      if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltTick);
+    }
+
+    function onPointerMove(e) {
+      if (reduce || e.pointerType === "touch") return;
+      const rect = root.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      gx = -py * 12;
+      gy = px * 14;
+      kickTilt();
+    }
+
+    function onPointerEnter(e) {
+      if (e.pointerType === "touch") return;
+      hovering = true;
+      syncPause();
+    }
+
+    function onPointerLeave(e) {
+      if (e.pointerType === "touch") return;
+      hovering = false;
+      gx = 0;
+      gy = 0;
+      kickTilt();
+      syncPause();
+    }
+
+    function onFocusIn() {
+      focused = true;
+      syncPause();
+    }
+
+    function onFocusOut(e) {
+      if (root.contains(e.relatedTarget)) return;
+      focused = false;
+      syncPause();
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        retreat(true);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        advance(true);
+      } else if ((e.key === "Enter" || e.key === " ") && e.target === root) {
+        e.preventDefault();
+        openDrawer(cards[order[0]].dataset.reviewId);
+      }
+    }
+
+    function onPrev(e) {
+      e.stopPropagation();
+      retreat(true);
+    }
+
+    function onNext(e) {
+      e.stopPropagation();
+      advance(true);
+    }
+
+    cards.forEach((el) => {
+      const btn = el.querySelector(".concept-hit");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        if (el !== cards[order[0]]) return;
+        openDrawer(el.dataset.reviewId);
+      });
+    });
+
+    root.addEventListener("pointermove", onPointerMove);
+    root.addEventListener("pointerenter", onPointerEnter);
+    root.addEventListener("pointerleave", onPointerLeave);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    root.addEventListener("keydown", onKeyDown);
+    if (prevBtn) prevBtn.addEventListener("click", onPrev);
+    if (nextBtn) nextBtn.addEventListener("click", onNext);
+
+    apply(false);
+    startTimer();
+
+    conceptCleanups.push(() => {
+      stopTimer();
+      if (tiltRaf) cancelAnimationFrame(tiltRaf);
+      root.removeEventListener("pointermove", onPointerMove);
+      root.removeEventListener("pointerenter", onPointerEnter);
+      root.removeEventListener("pointerleave", onPointerLeave);
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("focusout", onFocusOut);
+      root.removeEventListener("keydown", onKeyDown);
+      if (prevBtn) prevBtn.removeEventListener("click", onPrev);
+      if (nextBtn) nextBtn.removeEventListener("click", onNext);
+    });
+  }
+
+  function mountCoverFlow(wrap) {
+    const reduce = prefersReducedMotion();
+    const stage = wrap.querySelector(".flow-stage");
+    const items = [...wrap.querySelectorAll(".flow-item")];
+    const prevBtn = wrap.querySelector("[data-flow-prev]");
+    const nextBtn = wrap.querySelector("[data-flow-next]");
+    const countEl = wrap.querySelector("[data-flow-count]");
+    const live = wrap.querySelector("[data-flow-live]");
+    const count = items.length;
+    if (!stage || !count) return;
+
+    const ids = items.map((el) => el.dataset.reviewId);
+    let index = Math.min(2, count - 1);
+    if (ui.conceptFlowId) {
+      const found = ids.indexOf(ui.conceptFlowId);
+      if (found >= 0) index = found;
+    }
+    let pos = index;
+    let target = index;
+    let vel = 0;
+    let running = false;
+    let raf = 0;
+    let last = 0;
+    let dragging = false;
+    let spacing = 200;
+    let booted = false;
+    let announced = -1;
+    let primed = false;
+
+    function clampIndex(v) {
+      return Math.max(0, Math.min(count - 1, v));
+    }
+
+    function measure() {
+      const parent = wrap.parentElement || wrap;
+      const avail = parent.clientWidth || window.innerWidth;
+      let itemW = 260;
+      if (avail < 760) itemW = Math.round(Math.min(230, Math.max(176, avail * 0.62)));
+      const itemH = Math.round(itemW * (320 / 260));
+      const stageW = Math.min(avail, Math.round(itemW * 3));
+      const stageH = Math.round(itemH * (reduce ? 1.12 : 1.72));
+      stage.style.width = `${stageW}px`;
+      stage.style.height = `${stageH}px`;
+      if (!reduce) stage.style.perspective = "1200px";
+      else stage.style.perspective = "none";
+      items.forEach((el) => {
+        el.style.width = `${itemW}px`;
+        el.style.height = `${itemH}px`;
+        el.style.marginLeft = `${-itemW / 2}px`;
+        el.style.marginTop = `${-itemH / 2}px`;
+        el.style.top = reduce ? "50%" : "38%";
+      });
+      spacing = itemW * 0.72 + 16;
+    }
+
+    function placement(offset) {
+      const sign = Math.sign(offset) || 0;
+      const abs = Math.abs(offset);
+      if (reduce) {
+        return {
+          x: 0,
+          rotateY: 0,
+          z: 0,
+          scale: 1,
+          opacity: abs < 0.45 ? 1 : 0,
+        };
+      }
+      const near = Math.min(abs, 1);
+      const far = Math.max(abs - 1, 0);
+      return {
+        x: sign * (near * spacing + far * spacing * 0.55),
+        rotateY: -Math.max(-1, Math.min(1, offset)) * 52,
+        z: -Math.min(abs, 3) * 130,
+        scale: 1 - Math.min(abs, 3) * 0.08,
+        opacity: abs > 3.4 ? 0 : Math.max(0.15, 1 - Math.max(abs - 1, 0) * 0.28),
+      };
+    }
+
+    function layout() {
+      items.forEach((el, i) => {
+        const offset = i - pos;
+        const abs = Math.abs(offset);
+        const p = placement(offset);
+        const reflect = el.querySelector(".flow-reflect");
+        el.style.transition = reduce && primed ? "opacity 180ms linear" : "none";
+        el.style.transform = reduce
+          ? "translate3d(0, 0, 0)"
+          : `translate3d(${p.x}px, 0, ${p.z}px) rotateY(${p.rotateY}deg) scale(${p.scale})`;
+        el.style.opacity = String(p.opacity);
+        el.style.zIndex = String(Math.round(100 - abs * 10));
+        el.style.pointerEvents = p.opacity < 0.08 ? "none" : "auto";
+        el.classList.toggle("is-front", abs < 0.45);
+        if (reflect) {
+          reflect.hidden = reduce || abs > 2.35;
+        }
+      });
+      primed = true;
+    }
+
+    function syncChrome(announce) {
+      items.forEach((el, i) => {
+        const btn = el.querySelector(".concept-hit");
+        const title = el.dataset.title || "Review";
+        const on = i === index;
+        if (!btn) return;
+        btn.tabIndex = on ? 0 : -1;
+        btn.setAttribute("aria-label", on ? `Open ${title}` : `Show ${title}`);
+        el.setAttribute("aria-hidden", reduce && !on ? "true" : "false");
+      });
+      if (prevBtn) prevBtn.disabled = index <= 0;
+      if (nextBtn) nextBtn.disabled = index >= count - 1;
+      if (countEl) countEl.textContent = `${index + 1} / ${count}`;
+      ui.conceptFlowId = ids[index];
+      if (!announce || announced === index) return;
+      announced = index;
+      if (booted && live) {
+        live.textContent = `${items[index].dataset.title || "Review"}, ${index + 1} of ${count}`;
+      }
+    }
+
+    function stopSpring() {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    function tick(now) {
+      if (!running) return;
+      const dt = Math.min(0.032, (now - last) / 1000) || 0.016;
+      last = now;
+      const acc = (-320 * (pos - target) - 32 * vel) / 0.9;
+      vel += acc * dt;
+      pos += vel * dt;
+      if (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02) {
+        pos = target;
+        vel = 0;
+        running = false;
+        layout();
+        syncChrome(true);
+        return;
+      }
+      layout();
+      raf = requestAnimationFrame(tick);
+    }
+
+    function goTo(i, immediate) {
+      index = clampIndex(i);
+      target = index;
+      ui.conceptFlowId = ids[index];
+      if (immediate || reduce) {
+        stopSpring();
+        pos = target;
+        vel = 0;
+        layout();
+        syncChrome(true);
+        return;
+      }
+      if (Math.abs(pos - target) < 0.001 && Math.abs(vel) < 0.02) {
+        pos = target;
+        vel = 0;
+        layout();
+        syncChrome(true);
+        return;
+      }
+      if (!running) {
+        running = true;
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    }
+
+    let startX = 0;
+    let startPos = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;
+    let dragMoved = 0;
+    let downItem = null;
+
+    function onPointerDown(e) {
+      if (e.button != null && e.button !== 0) return;
+      dragging = true;
+      dragMoved = 0;
+      downItem = e.target.closest?.(".flow-item") || null;
+      startX = lastX = e.clientX;
+      startPos = pos;
+      lastT = performance.now();
+      velocity = 0;
+      stopSpring();
+      vel = 0;
+      stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    }
+
+    function onPointerMove(e) {
+      if (!dragging) return;
+      const now = performance.now();
+      const dx = e.clientX - startX;
+      dragMoved = Math.max(dragMoved, Math.abs(dx));
+      const inst = (e.clientX - lastX) / Math.max(8, now - lastT);
+      velocity = velocity * 0.55 + inst * 0.45;
+      lastX = e.clientX;
+      lastT = now;
+      let raw = startPos - dx / spacing;
+      if (raw < 0) raw *= 0.35;
+      else if (raw > count - 1) raw = (count - 1) + (raw - (count - 1)) * 0.35;
+      pos = raw;
+      layout();
+      if (dragMoved > 6) e.preventDefault();
+    }
+
+    let ignoreClickUntil = 0;
+
+    function finishDrag() {
+      if (!dragging) return;
+      dragging = false;
+      stage.classList.remove("is-dragging");
+      const item = downItem;
+      downItem = null;
+      if (dragMoved < 8) {
+        ignoreClickUntil = performance.now() + 400;
+        if (item) {
+          const i = Number(item.dataset.flowIndex);
+          if (i === index) openDrawer(item.dataset.reviewId);
+          else goTo(i, reduce);
+        }
+        return;
+      }
+      ignoreClickUntil = performance.now() + 80;
+      let dest = Math.round(pos);
+      if (Math.abs(velocity) > 0.6) dest -= Math.sign(velocity);
+      goTo(dest, reduce);
+    }
+
+    function onPointerUp() { finishDrag(); }
+    function onPointerCancel() {
+      if (!dragging) return;
+      dragging = false;
+      downItem = null;
+      stage.classList.remove("is-dragging");
+      goTo(Math.round(pos), reduce);
+    }
+
+    function onClick(e) {
+      const item = e.target.closest(".flow-item");
+      if (!item || !wrap.contains(item)) return;
+      if (performance.now() < ignoreClickUntil) {
+        e.preventDefault();
+        return;
+      }
+      const i = Number(item.dataset.flowIndex);
+      if (i === index) openDrawer(item.dataset.reviewId);
+      else goTo(i, reduce);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goTo(index - 1, reduce);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goTo(index + 1, reduce);
+      } else if ((e.key === "Enter" || e.key === " ") && e.target === stage) {
+        e.preventDefault();
+        openDrawer(items[index].dataset.reviewId);
+      }
+    }
+
+    function onResize() {
+      measure();
+      layout();
+    }
+
+    items.forEach((el) => {
+      const btn = el.querySelector(".concept-hit");
+      if (!btn) return;
+      btn.addEventListener("click", onClick);
+    });
+    stage.addEventListener("pointerdown", onPointerDown);
+    stage.addEventListener("pointermove", onPointerMove);
+    stage.addEventListener("pointerup", onPointerUp);
+    stage.addEventListener("pointercancel", onPointerCancel);
+    wrap.addEventListener("keydown", onKeyDown);
+    if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1, reduce));
+    if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1, reduce));
+    window.addEventListener("resize", onResize);
+
+    measure();
+    goTo(index, true);
+    booted = true;
+
+    conceptCleanups.push(() => {
+      stopSpring();
+      window.removeEventListener("resize", onResize);
+      stage.removeEventListener("pointerdown", onPointerDown);
+      stage.removeEventListener("pointermove", onPointerMove);
+      stage.removeEventListener("pointerup", onPointerUp);
+      stage.removeEventListener("pointercancel", onPointerCancel);
+      wrap.removeEventListener("keydown", onKeyDown);
+    });
   }
 
   function renderBoard() {
@@ -1313,6 +1989,7 @@
         else if (run === "palette") openPalette();
       });
     });
+    mountConceptLayouts(canvas);
   }
 
   function getCard(id) { return state.cards.find((c) => c.id === id); }

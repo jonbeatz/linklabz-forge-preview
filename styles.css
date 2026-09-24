@@ -2192,3 +2192,394 @@ a {
 }
 .tools-tip p { margin: 0; }
 .tools-tip em { color: var(--text); font-style: normal; font-weight: 600; }
+
+/* —— Concepts: GodUI-inspired test layouts (not the production board) —— */
+.pill[data-view="concepts"]:not(.active) {
+  box-shadow: inset 0 0 0 1px rgba(245, 193, 92, 0.38);
+}
+
+.concept-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -4px 0 14px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.concept-test-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  color: var(--amber);
+  background: rgba(245, 193, 92, 0.08);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.concept-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.concept-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  background: rgba(22, 24, 29, 0.55);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.concept-jump a:hover,
+.concept-jump a:focus-visible {
+  border-color: var(--amber);
+  color: var(--amber);
+  outline: none;
+}
+
+.concept-block {
+  margin: 0 0 42px;
+  scroll-margin-top: 132px;
+}
+
+.concept-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin-bottom: 12px;
+}
+
+.concept-block-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 28;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.concept-block-head h3 em {
+  font-style: italic;
+  font-weight: 800;
+  color: var(--amber);
+}
+
+.concept-block-head p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.concept-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.concept-nav {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: rgba(16, 18, 24, 0.82);
+  color: var(--gold);
+  font-size: 1.55rem;
+  line-height: 1;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s var(--ease-spring);
+}
+
+.concept-nav:hover,
+.concept-nav:focus-visible {
+  border-color: var(--amber);
+  background: rgba(245, 193, 92, 0.12);
+  outline: none;
+}
+
+.concept-nav:active { transform: scale(0.96); }
+
+.concept-nav:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.concept-count {
+  min-width: 4.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.swap-stage .concept-count {
+  margin-top: 10px;
+}
+
+.concept-hit {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+}
+
+.concept-hit:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.concept-card-face {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(165deg, rgba(62, 48, 22, 0.55), rgba(16, 18, 24, 0.25) 46%),
+    var(--glass-strong);
+  border: 1px solid var(--hairline-strong);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 215, 138, 0.16);
+}
+
+.concept-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lane-chip.try {
+  color: #1a1408;
+  background: var(--amber);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.lane-chip.parked {
+  color: #1a1408;
+  background: var(--parked);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.lane-chip.skipped {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.lane-chip.inbox {
+  color: var(--gold);
+  border-color: var(--hairline-strong);
+}
+
+.concept-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.concept-rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.concept-rating {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--amber);
+  font-size: 0.82rem;
+}
+
+.concept-snippet {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.concept-host {
+  margin-top: auto;
+  padding-top: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  color: var(--amber);
+  opacity: 0.88;
+}
+
+/* Card Swap */
+.swap-stage {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding-top: 120px;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 18px;
+}
+
+.swap-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.swap-stage:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 6px;
+}
+
+.swap-perspective {
+  width: min(280px, 62vw);
+  height: min(348px, 88vw);
+  flex: 0 0 auto;
+  perspective: 1200px;
+}
+
+.swap-tilt {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.swap-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.swap-card .concept-card-face {
+  background:
+    linear-gradient(180deg, rgba(245, 193, 92, 0.55), rgba(245, 193, 92, 0) 26px),
+    linear-gradient(165deg, rgba(62, 48, 22, 0.72), rgba(16, 18, 24, 0.35) 48%),
+    var(--glass-strong);
+}
+
+.swap-card.is-front .concept-card-face {
+  border-color: rgba(245, 193, 92, 0.62);
+  box-shadow:
+    0 22px 46px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(245, 193, 92, 0.14),
+    inset 0 1px 0 rgba(255, 215, 138, 0.22);
+}
+
+/* Cover Flow */
+.flow-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flow-stage {
+  position: relative;
+  margin: 0 auto;
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+  border-radius: 22px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.flow-stage:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+}
+
+.flow-stage.is-dragging { cursor: grabbing; }
+
+.flow-item {
+  position: absolute;
+  left: 50%;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.flow-item.is-front .concept-card-face {
+  border-color: rgba(245, 193, 92, 0.62);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(245, 193, 92, 0.16),
+    inset 0 1px 0 rgba(255, 215, 138, 0.2);
+}
+
+.flow-reflect {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  height: 46%;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 18px;
+  pointer-events: none;
+  opacity: 0.3;
+  transform: scaleY(-1);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 74%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 74%);
+  filter: sepia(0.4) saturate(0.65) brightness(0.7);
+}
+
+.flow-reflect .concept-card-face {
+  height: 220%;
+  width: 100%;
+  flex: none;
+}
+
+@media (max-width: 720px) {
+  .swap-stage { padding-top: 104px; width: 100%; }
+  .swap-row { gap: 8px; }
+  .swap-perspective {
+    width: min(210px, 58vw);
+    height: 286px;
+  }
+  .concept-block-head h3 { font-size: 1.2rem; }
+  .concept-title { font-size: 1.02rem; }
+  .concept-snippet { -webkit-line-clamp: 3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swap-tilt { transform: none !important; }
+  .swap-card { transition: none !important; }
+  .flow-reflect { display: none !important; }
+  .flow-stage { cursor: default; }
+}
