@@ -26,6 +26,7 @@
 - **Spotlight (experimental)** — under Tools only. A manual 3-card stack of the top-rated Try It reviews. Arrows only; it does not auto-advance and it is not a board mode.
 - **Accessibility** — drawer, command palette, add dialogs, and the Forge reference lightbox trap focus, restore it on close, and lock background scroll. Review cards keep the favorite control separate from the open control. Reduced motion flattens Cover to a cross-fade and Spotlight to an instant swap.
 - **Forge reference** — `?` on the command island opens the glass help sheet (full sheet on a phone). Title plus “Surfaces + keys. Lanes are home.” Copy follows Quill v1.1.
+- **One toolbar** — search stays on the command island. Metrics stay compact; filters open on demand. Empty lanes stay hidden. Cards use a thumb or monogram, an amber rail for Promoted, and at most two tags.
 
 ## Tech stack
 

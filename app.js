@@ -73,6 +73,7 @@
     todoProjectFilter: "",
     conceptSwapOrder: null,
     conceptFlowId: null,
+    filtersOpen: false,
   };
 
   /** @type {string|null} */
@@ -440,6 +441,8 @@
       document.getElementById("nav"),
       document.getElementById("board-layout"),
       document.getElementById("board-surface"),
+      document.getElementById("stats-strip"),
+      document.getElementById("island-filters"),
     ].filter(Boolean);
     const tools = [...document.querySelectorAll("#island-tools button, #island-tools input, #island-tools select")]
       .filter((el) => el.id !== "btn-help");
@@ -860,6 +863,7 @@
     ui.filterFavorites = false;
     ui.filterProject = "";
     ui.filterBookmarkType = "";
+    ui.filtersOpen = false;
     ui.todoStatusFilter = "all";
     ui.todoProjectFilter = "";
     ui.search = "";
@@ -954,6 +958,10 @@
 
     document.getElementById("btn-cmd-palette").addEventListener("click", openPalette);
     document.getElementById("btn-help").addEventListener("click", openHelp);
+    document.getElementById("btn-filters").addEventListener("click", () => {
+      ui.filtersOpen = !ui.filtersOpen;
+      render();
+    });
     document.getElementById("help-close").addEventListener("click", closeHelp);
     document.getElementById("help-backdrop").addEventListener("click", (e) => {
       if (e.target.id === "help-backdrop") closeHelp();
@@ -1073,6 +1081,18 @@
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
     const boardLayout = document.getElementById("board-layout");
     if (boardLayout) boardLayout.classList.toggle("hidden", !showBoardChrome);
+    const filtersActive = !!(ui.filterLane || ui.filterCategory || ui.filterPromoted || ui.filterFavorites || ui.filterProject);
+    const showFilterPanel = (ui.filtersOpen || filtersActive) && (showBoardChrome || ui.view === "favorites");
+    document.getElementById("island").classList.toggle("filters-open", showFilterPanel);
+    const filtersBtn = document.getElementById("btn-filters");
+    if (filtersBtn) {
+      const showFiltersBtn = showBoardChrome || ui.view === "favorites";
+      filtersBtn.classList.toggle("hidden", !showFiltersBtn);
+      filtersBtn.setAttribute("aria-expanded", String(showFilterPanel));
+      filtersBtn.classList.toggle("on", showFilterPanel);
+    }
+    const metrics = document.getElementById("stats-strip");
+    if (metrics) metrics.classList.toggle("hidden", !showBoardChrome);
 
     search.placeholder =
       ui.view === "board" ? "Search… lane:try project:reWavz hardware:rtx"
@@ -1151,11 +1171,31 @@
     wireCanvasEvents(canvas);
   }
 
+  function monogram(title) {
+    const parts = String(title || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "·";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   function cardEl(c) {
     const cherries = Array.isArray(c.cherryPick) ? c.cherryPick : [];
     const favLabel = `${c.favorite ? "Unfavorite" : "Favorite"} ${c.title}`;
+    const tags = [];
+    if (c.category) tags.push(`<span class="badge cat">${escapeHtml(c.category)}</span>`);
+    if (c.goesTo) tags.push(`<span class="badge goes">${escapeHtml(c.goesTo)}</span>`);
+    if (cherries.length) tags.push(`<span class="badge">${cherries.length} cherry-pick${cherries.length > 1 ? "s" : ""}</span>`);
+    const shown = tags.slice(0, 2).join("");
+    const extra = tags.length - 2;
+    const more = extra > 0 ? `<span class="badge more" title="${extra} more">+${extra}</span>` : "";
+    const shot = screenshotSrc(c);
+    const mono = monogram(c.title);
+    const thumb = shot
+      ? `<img src="${escapeHtml(shot)}" alt="" />`
+      : `<span class="monogram">${escapeHtml(mono)}</span>`;
     return `
-      <article class="card">
+      <article class="card${c.promoted ? " is-promoted" : ""}">
+        <div class="card-thumb" data-mono="${escapeHtml(mono)}" aria-hidden="true">${thumb}</div>
         <div class="card-top">
           <h3 class="card-title"><button type="button" class="card-open" data-card-id="${escapeHtml(c.id)}" aria-label="Open ${escapeHtml(c.title)}">${escapeHtml(c.title)}</button></h3>
           ${c.protected ? `<span class="badge lock" title="Protected seed">🔒</span>` : ""}
@@ -1163,14 +1203,12 @@
         </div>
         <div class="card-meta">
           ${starsHtml(c.rating)}
-          <span class="badge cat">${escapeHtml(c.category || "—")}</span>
-          ${c.promoted ? `<span class="badge promoted">Promoted</span>` : ""}
-          ${c.goesTo ? `<span class="badge goes">${escapeHtml(c.goesTo)}</span>` : ""}
+          ${shown}
+          ${more}
         </div>
         <p class="card-rec">${escapeHtml(c.recommendation || "")}</p>
         <div class="card-footer">
           ${c.action ? `<span class="action-label">${escapeHtml(c.action)}</span>` : ""}
-          ${cherries.length ? `<span class="badge">${cherries.length} cherry-pick${cherries.length > 1 ? "s" : ""}</span>` : ""}
         </div>
       </article>`;
   }
@@ -1892,6 +1930,7 @@
     for (const lane of LANES) {
       const items = list.filter((c) => c.lane === lane.id);
       if (ui.filterLane && ui.filterLane !== lane.id) continue;
+      if (!items.length) continue;
       html += `
         <section class="lane-col ${lane.id}">
           <div class="lane-head">
@@ -2112,6 +2151,19 @@
   }
 
   function wireCanvasEvents(canvas) {
+    canvas.querySelectorAll(".card-thumb img").forEach((img) => {
+      img.addEventListener("error", () => {
+        const thumb = img.closest(".card-thumb");
+        const mono = thumb?.dataset.mono || "·";
+        img.remove();
+        if (thumb && !thumb.querySelector(".monogram")) {
+          const mark = document.createElement("span");
+          mark.className = "monogram";
+          mark.textContent = mono;
+          thumb.appendChild(mark);
+        }
+      });
+    });
     canvas.querySelectorAll("[data-card-id]").forEach((el) => {
       el.addEventListener("click", (e) => {
         if (e.target.closest("[data-fav]")) return;
@@ -2596,8 +2648,12 @@
     const shot = screenshotSrc(c);
     const body = document.getElementById("drawer-body");
     body.innerHTML = `
+      <a class="btn-primary drawer-open" href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener">Open</a>
+      <div class="callout callout-rec callout-rec-lead">
+        <div class="callout-title">My recommendation</div>
+        <p>${escapeHtml(c.recommendation || "—")}</p>
+      </div>
       <div class="drawer-actions-row">
-        <a class="btn-primary" href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Open link ↗</a>
         <button type="button" class="btn-ghost" id="d-copy-brief">Copy Cursor brief</button>
         <button type="button" class="btn-ghost" id="d-copy-md">Copy Markdown</button>
         <button type="button" class="btn-ghost" id="d-copy-bridge">Copy bridge note</button>
@@ -2624,10 +2680,6 @@
           <input type="date" id="d-revisit" value="${escapeHtml(c.revisitDate || "")}" /></label>
         <div class="field-block"><div class="field-label">Rating rubric</div>
           <p class="rubric-line">${escapeHtml(RATING_RUBRIC[c.rating] || "—")}</p></div>
-      </div>
-      <div class="callout callout-rec">
-        <div class="callout-title">My recommendation</div>
-        <p>${escapeHtml(c.recommendation || "—")}</p>
       </div>
       <div class="callout callout-cherry">
         <div class="callout-title">Cherry-pick</div>
