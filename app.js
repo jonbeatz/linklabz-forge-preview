@@ -74,7 +74,26 @@
     conceptSwapOrder: null,
     conceptFlowId: null,
     filtersOpen: false,
+    lab: true,
+    filterLanes: [],
+    filterCategories: [],
+    filterProjects: [],
   };
+
+  const LAB_PREF_KEY = "linklabz-forge-lab-ui";
+
+  function loadLabPref() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LAB_PREF_KEY) || "null");
+      if (raw && typeof raw.lab === "boolean") ui.lab = raw.lab;
+    } catch (_) { /* keep default */ }
+  }
+
+  function saveLabPref() {
+    try {
+      localStorage.setItem(LAB_PREF_KEY, JSON.stringify({ lab: !!ui.lab }));
+    } catch (_) { /* private mode */ }
+  }
 
   /** @type {string|null} */
   let sessionBaseline = null;
@@ -212,6 +231,7 @@
   }
 
   async function init() {
+    loadLabPref();
     const stored = loadFromStorage();
     if (stored && Array.isArray(stored.cards) && stored.cards.length) {
       state = stored;
@@ -376,11 +396,14 @@
     if (ops.lane || ops.project || ops.hardware || ops.found || ops.action || ops.text) {
       list = list.filter((c) => cardMatchesOps(c, ops));
     }
-    if (ui.filterLane) list = list.filter((c) => c.lane === ui.filterLane);
-    if (ui.filterCategory) list = list.filter((c) => c.category === ui.filterCategory);
+    const lanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : []);
+    const cats = (ui.filterCategories && ui.filterCategories.length) ? ui.filterCategories : (ui.filterCategory ? [ui.filterCategory] : []);
+    const projects = (ui.filterProjects && ui.filterProjects.length) ? ui.filterProjects : (ui.filterProject ? [ui.filterProject] : []);
+    if (lanes.length) list = list.filter((c) => lanes.includes(c.lane));
+    if (cats.length) list = list.filter((c) => cats.includes(c.category));
     if (ui.filterPromoted) list = list.filter((c) => c.promoted);
     if (ui.filterFavorites) list = list.filter((c) => c.favorite);
-    if (ui.filterProject) list = list.filter((c) => c.goesTo === ui.filterProject);
+    if (projects.length) list = list.filter((c) => projects.includes(c.goesTo));
 
     if (ui.sort === "rating") {
       list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || a.title.localeCompare(b.title));
@@ -607,6 +630,7 @@
   function applyLaneFilter(lane) {
     ui.view = "board";
     ui.filterLane = lane;
+    ui.filterLanes = lane ? [lane] : [];
     syncFilterChrome();
     render();
     toast(lane ? `Lane filter → ${LANES.find((l) => l.id === lane)?.label || lane}` : "All lanes");
@@ -728,8 +752,8 @@
         label: "Cycle board layout",
         icon: "⧉", keys: "toggle grid sections layout bento lanes cover browse",
         run: () => {
-          const order = ["sections", "grid", "cover"];
-          const names = { sections: "Lanes", grid: "Bento", cover: "Cover" };
+          const order = ui.lab ? ["sections", "grid", "cover", "band", "coast"] : ["sections", "grid", "cover"];
+          const names = { sections: "Lanes", grid: "Bento", cover: "Cover", band: "Band", coast: "Coast" };
           const i = Math.max(0, order.indexOf(ui.layout));
           ui.layout = order[(i + 1) % order.length];
           syncFilterChrome(); ui.view = "board"; render();
@@ -864,6 +888,9 @@
   function clearFilters() {
     ui.filterLane = "";
     ui.filterCategory = "";
+    ui.filterLanes = [];
+    ui.filterCategories = [];
+    ui.filterProjects = [];
     ui.filterPromoted = false;
     ui.filterFavorites = false;
     ui.filterProject = "";
@@ -916,11 +943,13 @@
 
     document.getElementById("filter-lane").addEventListener("change", (e) => {
       ui.filterLane = e.target.value;
+      ui.filterLanes = e.target.value ? [e.target.value] : [];
       renderCanvas();
       updateCounts();
     });
     document.getElementById("filter-category").addEventListener("change", (e) => {
       ui.filterCategory = e.target.value;
+      ui.filterCategories = e.target.value ? [e.target.value] : [];
       renderCanvas();
     });
     document.getElementById("filter-promoted").addEventListener("click", () => {
@@ -952,6 +981,7 @@
       const chip = e.target.closest("[data-project]");
       if (!chip) return;
       ui.filterProject = chip.dataset.project;
+      ui.filterProjects = chip.dataset.project ? [chip.dataset.project] : [];
       renderProjectStrip();
       renderCanvas();
     });
@@ -1093,7 +1123,12 @@
       if (ui.view === "tools") swapJump.setAttribute("aria-current", "location");
       else swapJump.removeAttribute("aria-current");
     }
-    const filtersActive = !!(ui.filterLane || ui.filterCategory || ui.filterPromoted || ui.filterFavorites || ui.filterProject);
+    const filtersActive = !!(
+      ui.filterLane || (ui.filterLanes && ui.filterLanes.length) ||
+      ui.filterCategory || (ui.filterCategories && ui.filterCategories.length) ||
+      ui.filterPromoted || ui.filterFavorites ||
+      ui.filterProject || (ui.filterProjects && ui.filterProjects.length)
+    );
     const showFilterPanel = (ui.filtersOpen || filtersActive) && (showBoardChrome || ui.view === "favorites");
     document.getElementById("island").classList.toggle("filters-open", showFilterPanel);
     const filtersBtn = document.getElementById("btn-filters");
@@ -1137,6 +1172,7 @@
     renderCanvas();
     updateCounts();
     if (ui.drawerId && !getCard(ui.drawerId)) closeDrawer();
+    if (window.ForgeLab && window.ForgeLab.afterRender) window.ForgeLab.afterRender();
   }
 
   function renderProjectStrip() {
@@ -1205,12 +1241,14 @@
     const thumb = shot
       ? `<img src="${escapeHtml(shot)}" alt="" />`
       : `<span class="monogram">${escapeHtml(mono)}</span>`;
+    const holo = ui.lab && (c.lane === "try" || Number(c.rating) >= 4.8);
     return `
-      <article class="card${c.promoted ? " is-promoted" : ""}">
+      <article class="card${c.promoted ? " is-promoted" : ""}${holo ? " is-holo" : ""}">
         <div class="card-thumb" data-mono="${escapeHtml(mono)}" aria-hidden="true">${thumb}</div>
         <div class="card-top">
           <h3 class="card-title"><button type="button" class="card-open" data-card-id="${escapeHtml(c.id)}" aria-label="Open ${escapeHtml(c.title)}">${escapeHtml(c.title)}</button></h3>
           ${c.protected ? `<span class="badge lock" title="Protected seed">🔒</span>` : ""}
+          <button type="button" class="card-more" data-card-menu="${escapeHtml(c.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${escapeHtml(c.title)}">⋯</button>
           <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="${escapeHtml(favLabel)}" title="Favorite">${c.favorite ? "★" : "☆"}</button>
         </div>
         <div class="card-meta">
@@ -1990,8 +2028,14 @@
     });
   }
 
+  function boardLayout() {
+    if (!ui.lab && (ui.layout === "band" || ui.layout === "coast")) return "sections";
+    return ui.layout;
+  }
+
   function renderBoard() {
-    if (ui.layout === "cover") {
+    const layout = boardLayout();
+    if (layout === "cover") {
       const deck = coverDeck();
       const list = deck.cards;
       const scope = deck.preferred ? "Try It, promoted, and favorites" : "current review set";
@@ -2006,20 +2050,27 @@
       return header + renderCoverFlow(list);
     }
     const list = filteredCards();
+    const layoutName = layout === "grid" ? "bento grid" : layout === "band" ? "image accordion" : layout === "coast" ? "inertia gallery" : "magazine lanes";
     const header = `
       <div class="canvas-header">
         <div>
           <h2>${brandTitle("Reviews")}</h2>
-          <p>${list.length} card${list.length === 1 ? "" : "s"} · magazine lanes · amber forge</p>
+          <p>${list.length} card${list.length === 1 ? "" : "s"} · ${layoutName} · amber forge</p>
         </div>
       </div>`;
     if (!list.length) return header + `<div class="empty-state"><p>No cards match filters.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
-    if (ui.layout === "grid") return header + `<div class="bento">${list.map(cardEl).join("")}</div>`;
+    if (layout === "grid") return header + `<div class="bento">${list.map(cardEl).join("")}</div>`;
+    if (layout === "band" && window.ForgeLab) return header + window.ForgeLab.renderBand(list);
+    if (layout === "coast" && window.ForgeLab) {
+      const deck = coverDeck();
+      return header + window.ForgeLab.renderCoast(deck.cards.length ? deck.cards : list);
+    }
 
+    const activeLanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : null);
     let html = header + `<div class="lanes">`;
     for (const lane of LANES) {
       const items = list.filter((c) => c.lane === lane.id);
-      if (ui.filterLane && ui.filterLane !== lane.id) continue;
+      if (activeLanes && !activeLanes.includes(lane.id)) continue;
       if (!items.length) continue;
       html += `
         <section class="lane-col ${lane.id}">
@@ -2073,7 +2124,13 @@
     const q = ui.search.trim().toLowerCase();
     let cards = state.cards.filter((c) => c.favorite);
     let bms = state.bookmarks.filter((b) => b.favorite);
-    if (ui.filterProject) cards = cards.filter((c) => c.goesTo === ui.filterProject);
+    const favProjects = (ui.filterProjects && ui.filterProjects.length) ? ui.filterProjects : (ui.filterProject ? [ui.filterProject] : []);
+    const favLanes = (ui.filterLanes && ui.filterLanes.length) ? ui.filterLanes : (ui.filterLane ? [ui.filterLane] : []);
+    const favCats = (ui.filterCategories && ui.filterCategories.length) ? ui.filterCategories : (ui.filterCategory ? [ui.filterCategory] : []);
+    if (favProjects.length) cards = cards.filter((c) => favProjects.includes(c.goesTo));
+    if (favLanes.length) cards = cards.filter((c) => favLanes.includes(c.lane));
+    if (favCats.length) cards = cards.filter((c) => favCats.includes(c.category));
+    if (ui.filterPromoted) cards = cards.filter((c) => c.promoted);
     if (q) {
       cards = cards.filter((c) => [c.title, c.category, c.recommendation].join(" ").toLowerCase().includes(q));
       bms = bms.filter((b) => [b.title, b.url, b.note].join(" ").toLowerCase().includes(q));
@@ -2177,7 +2234,8 @@
       ).join("");
 
     const item = (t) => `
-      <div class="shelf-item todo-item" data-todo-id="${escapeHtml(t.id)}">
+      <div class="shelf-item todo-item" data-todo-id="${escapeHtml(t.id)}" role="listitem">
+        <button type="button" class="todo-grip" data-todo-grip="${escapeHtml(t.id)}" aria-label="Reorder ${escapeHtml(t.text)}"><span aria-hidden="true">⠿</span></button>
         <button type="button" class="todo-check ${t.done ? "done" : ""}" data-todo-toggle="${escapeHtml(t.id)}" aria-label="Toggle done">${t.done ? "✓" : ""}</button>
         <span class="todo-text ${t.done ? "struck" : ""}" data-todo-edit="${escapeHtml(t.id)}" title="Tap to edit">${escapeHtml(t.text)}</span>
         ${t.goesTo ? `<span class="badge goes todo-goes">${escapeHtml(t.goesTo)}</span>` : `<span class="badge todo-goes dim">—</span>`}
@@ -2193,19 +2251,20 @@
     const doneCount = state.todos.filter((t) => t.done).length;
     return `
       <div class="canvas-header"><div><h2>${brandTitle("To-do")}</h2><p>Personal tracker — projects, severity, inline edit, parking lane.</p></div></div>
+      <p class="reorder-hint">Drag the grip to set priority. Order is saved in this browser. Arrow buttons still move one step.</p>
       <div class="todo-filter-strip" aria-label="To-do status filters">${statusChips}</div>
       <div class="todo-project-strip" aria-label="To-do project filters">${projectChips}</div>
       <div class="shelf-toolbar">
         <button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button>
         <button type="button" class="btn-ghost" id="btn-clear-done" ${doneCount ? "" : "disabled"} title="Remove completed to-dos">Clear done${doneCount ? ` (${doneCount})` : ""}</button>
       </div>
-      <div class="shelf">${(status === "parked" ? parked : active).length
+      <div class="shelf reorder-list" role="list" aria-label="To-do priority" data-reorder-zone="${status === "parked" ? "parked" : "active"}">${(status === "parked" ? parked : active).length
         ? (status === "parked" ? parked : active).map(item).join("")
         : `<div class="empty-state"><p>${status === "all" ? "Inbox clear." : "Nothing matches."}</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
       ${showParkedZone && status === "all" ? `
       <div class="parked-zone">
         <div class="label">Parking lane</div>
-        <div class="shelf">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
+        <div class="shelf reorder-list" role="list" aria-label="Parked to-dos" data-reorder-zone="parked">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
       </div>` : ""}`;
   }
 
@@ -2376,6 +2435,7 @@
       });
     });
     mountConceptLayouts(canvas);
+    if (window.ForgeLab && window.ForgeLab.wireCanvas) window.ForgeLab.wireCanvas(canvas);
   }
 
   function getCard(id) { return state.cards.find((c) => c.id === id); }
@@ -2954,6 +3014,7 @@
         if (!open) frameWrap.innerHTML = "";
       });
     }
+    if (window.ForgeLab && window.ForgeLab.enhanceDrawer) window.ForgeLab.enhanceDrawer();
   }
 
   function closeDrawer() {
@@ -3222,6 +3283,7 @@
       for (const c of state.cards) c.protected = true;
       save(); closeDrawer();
       ui.filterLane = ""; ui.filterCategory = "";
+      ui.filterLanes = []; ui.filterCategories = []; ui.filterProjects = [];
       ui.filterPromoted = false; ui.filterFavorites = false;
       ui.filterProject = ""; ui.filterBookmarkType = "";
       ui.todoStatusFilter = "all"; ui.todoProjectFilter = "";
@@ -3234,6 +3296,57 @@
       toast("Reset failed — seed.json missing?");
     }
   }
+
+  function setLayout(layout) {
+    ui.layout = layout;
+    ui.view = "board";
+    closeDrawer();
+    syncFilterChrome();
+    render();
+    const names = { sections: "Lanes", grid: "Bento", cover: "Cover", band: "Band", coast: "Coast" };
+    toast(`Layout → ${names[layout] || layout}`);
+  }
+
+  function setView(view) {
+    ui.view = view;
+    closeDrawer();
+    render();
+  }
+
+  function setCardLane(id, lane) {
+    const card = getCard(id);
+    if (!card) return;
+    card.lane = lane;
+    save();
+    render();
+    if (ui.drawerId === id) openDrawer(id);
+    toast(`Lane → ${LANES.find((l) => l.id === lane)?.label || lane}`);
+  }
+
+  function togglePromoted(id) {
+    const card = getCard(id);
+    if (!card) return;
+    card.promoted = !card.promoted;
+    save();
+    render();
+    if (ui.drawerId === id) openDrawer(id);
+    toast(card.promoted ? "Promoted" : "Unpromoted");
+  }
+
+  function importClick() {
+    document.getElementById("import-file").click();
+  }
+
+  window.__forge = {
+    get state() { return state; },
+    get ui() { return ui; },
+    save, render, renderCanvas, toast, escapeHtml, openDrawer, closeDrawer,
+    toggleFavorite, exportJson, resetToSeed, clearFilters, openHelp, openPalette,
+    jumpToCardSwap, copyText, saveLabPref, setLayout, setView, setCardLane, togglePromoted,
+    importClick, categories, projectList, filteredCards, coverDeck, monogram,
+    screenshotSrc, starsHtml, laneName, brandTitle,
+    LANES,
+  };
 
   init();
 })();
