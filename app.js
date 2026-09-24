@@ -1371,6 +1371,7 @@
 
     const OFFSET_X = 22;
     const OFFSET_Y = 28;
+    const ROT_STEP = 2.5;
     const SCALE_STEP = 0.06;
     const ids = cards.map((el) => el.dataset.reviewId);
     let order = ids.map((_, i) => i);
@@ -1416,15 +1417,71 @@
       else startTimer();
     }
 
+    function fanSpread() {
+      if (reduce) return { offsetX: 0, offsetY: 0, rot: 0 };
+      const narrow = window.innerWidth < 768;
+      let offsetX = OFFSET_X;
+      let rot = ROT_STEP;
+      if (!narrow || !prevBtn || !nextBtn) return { offsetX, offsetY: OFFSET_Y, rot };
+      const box = tilt.parentElement.getBoundingClientRect();
+      const prevBox = prevBtn.getBoundingClientRect();
+      const nextBox = nextBtn.getBoundingClientRect();
+      if (!box.width || !nextBox.width) return { offsetX: 10, offsetY: OFFSET_Y, rot: 1.25 };
+      const gutter = Math.min(nextBox.left - box.right, box.left - prevBox.right);
+      const room = Math.max(0, gutter - 6);
+      const halfW = box.width / 2;
+      const halfH = box.height / 2;
+      const rank = Math.max(1, n - 1);
+      function fits(off, rotDeg) {
+        const scale = 1 - rank * SCALE_STEP;
+        const rad = (rotDeg * rank * Math.PI) / 180;
+        const extent = halfW * scale * Math.cos(rad) + halfH * scale * Math.sin(Math.abs(rad));
+        const x = rank * off;
+        const right = x + extent - halfW;
+        const left = extent - x - halfW;
+        return right <= room + 0.5 && left <= room + 0.5;
+      }
+      if (!fits(offsetX, rot)) {
+        let lo = 0;
+        let hi = offsetX;
+        for (let i = 0; i < 14; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(mid, rot)) lo = mid;
+          else hi = mid;
+        }
+        offsetX = lo;
+        if (!fits(offsetX, rot)) {
+          let rlo = 0;
+          let rhi = rot;
+          for (let i = 0; i < 14; i++) {
+            const mid = (rlo + rhi) / 2;
+            if (fits(0, mid)) rlo = mid;
+            else rhi = mid;
+          }
+          rot = rlo;
+          lo = 0;
+          hi = OFFSET_X;
+          for (let i = 0; i < 14; i++) {
+            const mid = (lo + hi) / 2;
+            if (fits(mid, rot)) lo = mid;
+            else hi = mid;
+          }
+          offsetX = lo;
+        }
+      }
+      return { offsetX, offsetY: OFFSET_Y, rot };
+    }
+
     function apply(fromUser) {
+      const fan = fanSpread();
       const rankOf = new Array(n);
       order.forEach((itemIndex, rank) => { rankOf[itemIndex] = rank; });
       const activeEl = document.activeElement;
       cards.forEach((el, i) => {
         const r = rankOf[i] ?? 0;
         const btn = el.querySelector(".concept-hit");
-        const x = r * OFFSET_X;
-        const y = -r * OFFSET_Y;
+        const x = r * fan.offsetX;
+        const y = -r * fan.offsetY;
         const scale = 1 - r * SCALE_STEP;
         el.style.zIndex = String(n - r);
         el.style.pointerEvents = r === 0 ? "auto" : "none";
@@ -1434,7 +1491,7 @@
           el.style.opacity = r === 0 ? "1" : "0";
         } else {
           el.style.transition = "transform 620ms cubic-bezier(0.22, 1.15, 0.36, 1), opacity 420ms ease";
-          el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${r * -2.5}deg) scale(${scale})`;
+          el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${r * -fan.rot}deg) scale(${scale})`;
           el.style.opacity = r > 4 ? "0" : "1";
         }
         el.classList.toggle("is-front", r === 0);
@@ -1578,6 +1635,10 @@
       tilt.style.transform = "none";
     }
 
+    function onResize() {
+      apply(false);
+    }
+
     root.addEventListener("pointermove", onPointerMove);
     root.addEventListener("pointerenter", onPointerEnter);
     root.addEventListener("pointerleave", onPointerLeave);
@@ -1585,6 +1646,7 @@
     root.addEventListener("focusout", onFocusOut);
     root.addEventListener("keydown", onKeyDown);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("resize", onResize);
     if (prevBtn) prevBtn.addEventListener("click", onPrev);
     if (nextBtn) nextBtn.addEventListener("click", onNext);
 
@@ -1600,6 +1662,7 @@
       root.removeEventListener("focusout", onFocusOut);
       root.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("resize", onResize);
       if (prevBtn) prevBtn.removeEventListener("click", onPrev);
       if (nextBtn) nextBtn.removeEventListener("click", onNext);
     });

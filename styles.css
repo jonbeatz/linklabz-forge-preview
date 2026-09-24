@@ -2827,7 +2827,16 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 52px;
+  width: 100%;
+}
+
+/* Perspective on the stack is its own layer and paints above in-flow siblings,
+   so the fanned cards covered the next arrow. Keep both arrows in a higher layer. */
+.swap-row > .concept-nav {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 44px;
 }
 
 .swap-stage:focus-visible {
@@ -2836,10 +2845,13 @@ a {
 }
 
 .swap-perspective {
+  position: relative;
+  z-index: 1;
   width: min(280px, 62vw);
   height: min(348px, 88vw);
   aspect-ratio: 280 / 348;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   perspective: 1200px;
 }
 
@@ -2930,19 +2942,22 @@ a {
 }
 
 @media (max-width: 767px) {
+  .swap-tilt,
+  .swap-card { transform-style: flat; }
   .swap-tilt { transform: none !important; }
   .cover-board .flow-stage { width: 100% !important; max-width: 100%; }
   .island .layout-toggle button { min-height: 44px; }
   .swap-jump { min-height: 44px; padding: 8px 16px; }
+  .swap-row { gap: 12px; }
+  .swap-perspective {
+    width: min(210px, calc(100% - 112px));
+    height: auto;
+    aspect-ratio: 210 / 286;
+  }
 }
 
 @media (max-width: 720px) {
   .swap-stage { padding-top: 104px; width: 100%; }
-  .swap-row { gap: 8px; }
-  .swap-perspective {
-    width: min(210px, 58vw);
-    height: 286px;
-  }
   .concept-block-head h3 { font-size: 1.2rem; }
   .concept-title { font-size: 1.02rem; }
   .concept-snippet { -webkit-line-clamp: 3; }
