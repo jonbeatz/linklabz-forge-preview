@@ -11,10 +11,20 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <title>LinkLabz Forge</title>
+  <meta name="description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta property="og:title" content="LinkLabz Forge" />
+  <meta property="og:description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://jonbeatz.github.io/linklabz-forge-preview/" />
+  <meta property="og:image" content="https://jonbeatz.github.io/linklabz-forge-preview/assets/screenshot.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="LinkLabz Forge" />
+  <meta name="twitter:description" content="LinkLabz Forge is an amber and charcoal review board for lanes, bookmarks, spitballs, and to-dos." />
+  <meta name="twitter:image" content="https://jonbeatz.github.io/linklabz-forge-preview/assets/screenshot.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,500;1,9..40,700&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260924b" />
+  <link rel="stylesheet" href="styles.css?v=20260924c" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -130,7 +140,7 @@
 
   <!-- Detail drawer -->
   <div class="drawer-backdrop" id="drawer-backdrop"></div>
-  <aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Review detail">
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="drawer-title" tabindex="-1" inert>
     <div class="drawer-gold-strip" id="drawer-sticky"></div>
     <div class="drawer-head">
       <h2 id="drawer-title">—</h2>
@@ -140,8 +150,8 @@
   </aside>
 
   <!-- Command palette -->
-  <div class="palette-backdrop" id="palette-backdrop" aria-hidden="true">
-    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="palette-backdrop" id="palette-backdrop" inert>
+    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Command palette" tabindex="-1">
       <div class="palette-input-wrap">
         <span class="palette-icon" aria-hidden="true">⌕</span>
         <input type="text" id="palette-input" placeholder="Jump, filter, lane:try, project:…, add, export…" autocomplete="off" spellcheck="false" />
@@ -157,8 +167,8 @@
   </div>
 
   <!-- Modal -->
-  <div class="modal-backdrop" id="modal-backdrop" role="presentation">
-    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-backdrop" id="modal-backdrop" role="presentation" inert>
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" tabindex="-1">
       <h3 id="modal-title">Add</h3>
       <div id="modal-body"></div>
       <div class="modal-foot" id="modal-foot"></div>
@@ -167,6 +177,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260924b"></script>
+  <script src="app.js?v=20260924c"></script>
 </body>
 </html>

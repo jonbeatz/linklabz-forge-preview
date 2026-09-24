@@ -57,6 +57,10 @@ body {
   overflow-x: hidden;
 }
 
+body.scroll-lock {
+  overflow: hidden;
+}
+
 button,
 input,
 select,
@@ -828,16 +832,36 @@ a {
   border: 1px solid var(--hairline);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   transition: transform 0.35s var(--ease-spring), box-shadow 0.35s, border-color 0.25s;
-  cursor: pointer;
   animation: card-in 0.55s var(--ease-out) both;
 }
 
 .card:hover,
-.card:focus-visible {
+.card:has(.card-open:focus-visible) {
   transform: translateY(-4px);
   border-color: var(--hairline-strong);
   box-shadow: var(--shadow-lift), 0 0 28px rgba(245, 193, 92, 0.08);
-  outline: none;
+}
+
+.card:has(.card-open:focus-visible) {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.card-open {
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.card-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
 }
 
 @keyframes card-in {
@@ -877,6 +901,7 @@ a {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  padding-right: 22px;
 }
 
 .card-title {
@@ -889,6 +914,10 @@ a {
 }
 
 .card-fav {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
   color: var(--text-dim);
   font-size: 1rem;
   line-height: 1;
@@ -896,8 +925,14 @@ a {
   transition: color 0.2s, transform 0.2s var(--ease-spring);
 }
 
-.card-fav:hover {
+.card-fav:hover,
+.card-fav:focus-visible {
   transform: scale(1.15);
+}
+
+.card-fav:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }
 .card-fav.on {
   color: var(--amber);
@@ -1736,8 +1771,21 @@ a {
   }
 
   .card:hover,
+  .card:has(.card-open:focus-visible),
+  .card-open:focus-visible,
+  .card-fav:hover,
+  .card-fav:focus-visible,
+  .tool-card:hover,
+  .tool-card:focus-visible,
   .stat-pill:hover,
-  .shelf-item:hover {
+  .shelf-item:hover,
+  .concept-nav:active,
+  .concept-nav:hover,
+  .concept-nav:focus-visible,
+  .star-edit button:hover,
+  .star-edit button:focus-visible,
+  .kbd-chip:hover,
+  .btn-gold:hover {
     transform: none;
   }
 }
@@ -2474,6 +2522,7 @@ a {
 .swap-perspective {
   width: min(280px, 62vw);
   height: min(348px, 88vw);
+  aspect-ratio: 280 / 348;
   flex: 0 0 auto;
   perspective: 1200px;
 }
@@ -2516,6 +2565,9 @@ a {
 
 .flow-stage {
   position: relative;
+  width: min(100%, 780px);
+  min-height: 376px;
+  aspect-ratio: 780 / 376;
   margin: 0 auto;
   overflow: hidden;
   touch-action: pan-y;
@@ -2580,7 +2632,10 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .swap-tilt { transform: none !important; }
+  .swap-tilt,
+  .swap-card,
+  .flow-item { transform: none !important; }
   .swap-card { transition: none !important; }
-  .flow-stage { cursor: default; }
+  .swap-card:not(.is-front) { opacity: 0 !important; }
+  .flow-stage { cursor: default; perspective: none !important; }
 }

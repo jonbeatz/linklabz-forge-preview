@@ -411,17 +411,127 @@
     });
   }
 
+  const dialogStack = [];
+  const FOCUSABLE_SELECTOR = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled]):not([type='hidden'])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+
+  function isFocusable(el) {
+    if (!el || el.closest("[inert]")) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    if (el.closest("[aria-hidden='true']")) return false;
+    const style = window.getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function focusableIn(root) {
+    return [...root.querySelectorAll(FOCUSABLE_SELECTOR)].filter(isFocusable);
+  }
+
+  function setBackgroundInert(on) {
+    const app = document.getElementById("app");
+    if (app) {
+      if (on) {
+        app.setAttribute("inert", "");
+        app.setAttribute("aria-hidden", "true");
+      } else {
+        app.removeAttribute("inert");
+        app.removeAttribute("aria-hidden");
+      }
+    }
+    document.body.classList.toggle("scroll-lock", on);
+  }
+
+  function beginDialog(dialogEl, opts = {}) {
+    if (!dialogEl) return;
+    const host = opts.host || dialogEl;
+    const fresh = !dialogStack.some((entry) => entry.el === dialogEl);
+    host.removeAttribute("inert");
+    dialogEl.removeAttribute("inert");
+    dialogEl.setAttribute("aria-modal", "true");
+    dialogEl.setAttribute("aria-hidden", "false");
+    if (!fresh) return;
+    dialogStack.push({
+      el: dialogEl,
+      host,
+      prevFocus: document.activeElement,
+    });
+    const picked = typeof opts.initial === "function" ? opts.initial() : opts.initial;
+    const target = (picked && dialogEl.contains(picked) && picked) || focusableIn(dialogEl)[0] || dialogEl;
+    if (typeof target.focus === "function") target.focus();
+    setBackgroundInert(true);
+    requestAnimationFrame(() => {
+      if (dialogStack[dialogStack.length - 1]?.el !== dialogEl) return;
+      if (dialogEl.contains(document.activeElement)) return;
+      if (typeof target.focus === "function") target.focus();
+    });
+  }
+
+  function endDialog(dialogEl) {
+    if (!dialogEl) return;
+    const idx = dialogStack.findIndex((entry) => entry.el === dialogEl);
+    if (idx < 0) {
+      dialogEl.setAttribute("aria-hidden", "true");
+      dialogEl.setAttribute("inert", "");
+      return;
+    }
+    const [entry] = dialogStack.splice(idx, 1);
+    const top = dialogStack[dialogStack.length - 1];
+    if (!top) setBackgroundInert(false);
+    const prev = entry.prevFocus;
+    if (top) {
+      const next = (prev && top.el.contains(prev) && prev) || focusableIn(top.el)[0] || top.el;
+      if (typeof next.focus === "function") next.focus();
+    } else if (prev && document.contains(prev)) {
+      prev.focus();
+    } else {
+      document.getElementById("canvas")?.focus();
+    }
+    dialogEl.setAttribute("aria-hidden", "true");
+    const host = entry.host || dialogEl;
+    host.setAttribute("inert", "");
+    if (host !== dialogEl) dialogEl.setAttribute("inert", "");
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || !dialogStack.length) return;
+    const top = dialogStack[dialogStack.length - 1].el;
+    const nodes = focusableIn(top);
+    if (!nodes.length) {
+      e.preventDefault();
+      top.focus();
+      return;
+    }
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !top.contains(active)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !top.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, true);
+
   function openPalette() {
     ui.paletteOpen = true;
     ui.paletteQuery = "";
     ui.paletteIndex = 0;
     const backdrop = document.getElementById("palette-backdrop");
+    const palette = document.getElementById("palette");
     const input = document.getElementById("palette-input");
     backdrop.classList.add("open");
-    backdrop.setAttribute("aria-hidden", "false");
     input.value = "";
     renderPaletteResults();
-    requestAnimationFrame(() => input.focus());
+    beginDialog(palette, { host: backdrop, initial: input });
   }
 
   function closePalette() {
@@ -429,7 +539,7 @@
     ui.paletteItems = [];
     const backdrop = document.getElementById("palette-backdrop");
     backdrop.classList.remove("open");
-    backdrop.setAttribute("aria-hidden", "true");
+    endDialog(document.getElementById("palette"));
   }
 
   function applyLaneFilter(lane) {
@@ -973,12 +1083,13 @@
 
   function cardEl(c) {
     const cherries = Array.isArray(c.cherryPick) ? c.cherryPick : [];
+    const favLabel = `${c.favorite ? "Unfavorite" : "Favorite"} ${c.title}`;
     return `
-      <article class="card" tabindex="0" data-card-id="${escapeHtml(c.id)}" role="button" aria-label="Open ${escapeHtml(c.title)}">
+      <article class="card">
         <div class="card-top">
-          <h3 class="card-title">${escapeHtml(c.title)}</h3>
+          <h3 class="card-title"><button type="button" class="card-open" data-card-id="${escapeHtml(c.id)}" aria-label="Open ${escapeHtml(c.title)}">${escapeHtml(c.title)}</button></h3>
           ${c.protected ? `<span class="badge lock" title="Protected seed">🔒</span>` : ""}
-          <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="Toggle favorite" title="Favorite">${c.favorite ? "★" : "☆"}</button>
+          <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="${escapeHtml(favLabel)}" title="Favorite">${c.favorite ? "★" : "☆"}</button>
         </div>
         <div class="card-meta">
           ${starsHtml(c.rating)}
@@ -1180,14 +1291,17 @@
         const x = r * OFFSET_X;
         const y = -r * OFFSET_Y;
         const scale = 1 - r * SCALE_STEP;
-        const rot = reduce ? 0 : r * -2.5;
         el.style.zIndex = String(n - r);
         el.style.pointerEvents = r === 0 ? "auto" : "none";
-        el.style.transition = reduce
-          ? "none"
-          : "transform 620ms cubic-bezier(0.22, 1.15, 0.36, 1), opacity 420ms ease";
-        el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${rot}deg) scale(${scale})`;
-        el.style.opacity = r > 4 ? "0" : "1";
+        if (reduce) {
+          el.style.transition = "none";
+          el.style.transform = "none";
+          el.style.opacity = r === 0 ? "1" : "0";
+        } else {
+          el.style.transition = "transform 620ms cubic-bezier(0.22, 1.15, 0.36, 1), opacity 420ms ease";
+          el.style.transform = `translate3d(${x}px, ${y}px, 0) rotateZ(${r * -2.5}deg) scale(${scale})`;
+          el.style.opacity = r > 4 ? "0" : "1";
+        }
         el.classList.toggle("is-front", r === 0);
         el.setAttribute("aria-hidden", r === 0 ? "false" : "true");
         if (btn) {
@@ -1318,12 +1432,24 @@
       });
     });
 
+    function onVisibility() {
+      if (!document.hidden) return;
+      if (tiltRaf) cancelAnimationFrame(tiltRaf);
+      tiltRaf = 0;
+      gx = 0;
+      gy = 0;
+      tx = 0;
+      ty = 0;
+      tilt.style.transform = "none";
+    }
+
     root.addEventListener("pointermove", onPointerMove);
     root.addEventListener("pointerenter", onPointerEnter);
     root.addEventListener("pointerleave", onPointerLeave);
     root.addEventListener("focusin", onFocusIn);
     root.addEventListener("focusout", onFocusOut);
     root.addEventListener("keydown", onKeyDown);
+    document.addEventListener("visibilitychange", onVisibility);
     if (prevBtn) prevBtn.addEventListener("click", onPrev);
     if (nextBtn) nextBtn.addEventListener("click", onNext);
 
@@ -1338,6 +1464,7 @@
       root.removeEventListener("focusin", onFocusIn);
       root.removeEventListener("focusout", onFocusOut);
       root.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("visibilitychange", onVisibility);
       if (prevBtn) prevBtn.removeEventListener("click", onPrev);
       if (nextBtn) nextBtn.removeEventListener("click", onNext);
     });
@@ -1621,6 +1748,19 @@
       layout();
     }
 
+    function onVisibility() {
+      if (!document.hidden) return;
+      dragging = false;
+      downItem = null;
+      stage.classList.remove("is-dragging");
+      openOnSettle = false;
+      stopSpring();
+      pos = target;
+      vel = 0;
+      layout();
+      syncChrome(false);
+    }
+
     items.forEach((el) => {
       const btn = el.querySelector(".concept-hit");
       if (!btn) return;
@@ -1634,6 +1774,7 @@
     if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1, reduce));
     if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1, reduce));
     window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibility);
 
     measure();
     goTo(index, true);
@@ -1642,6 +1783,7 @@
     conceptCleanups.push(() => {
       stopSpring();
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
       stage.removeEventListener("pointerdown", onPointerDown);
       stage.removeEventListener("pointermove", onPointerMove);
       stage.removeEventListener("pointerup", onPointerUp);
@@ -1901,10 +2043,9 @@
 
   function wireCanvasEvents(canvas) {
     canvas.querySelectorAll("[data-card-id]").forEach((el) => {
-      const open = () => openDrawer(el.dataset.cardId);
-      el.addEventListener("click", (e) => { if (e.target.closest("[data-fav]")) return; open(); });
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("[data-fav]")) return;
+        openDrawer(el.dataset.cardId);
       });
     });
     canvas.querySelectorAll("[data-fav]").forEach((btn) => {
@@ -2456,7 +2597,10 @@
 
     drawer.classList.add("open");
     backdrop.classList.add("open");
-    drawer.setAttribute("aria-hidden", "false");
+    beginDialog(drawer, {
+      host: drawer,
+      initial: document.getElementById("drawer-close"),
+    });
 
     document.getElementById("d-copy-brief").addEventListener("click", () => {
       copyText(c.cursorBrief || "", "Cursor brief copied");
@@ -2585,9 +2729,10 @@
 
   function closeDrawer() {
     ui.drawerId = null;
-    document.getElementById("drawer").classList.remove("open");
+    const drawer = document.getElementById("drawer");
+    drawer.classList.remove("open");
     document.getElementById("drawer-backdrop").classList.remove("open");
-    document.getElementById("drawer").setAttribute("aria-hidden", "true");
+    endDialog(drawer);
     document.getElementById("drawer-sticky").innerHTML = "";
     document.getElementById("drawer-body").innerHTML = "";
   }
@@ -2596,11 +2741,24 @@
     document.getElementById("modal-title").textContent = title;
     document.getElementById("modal-body").innerHTML = bodyHtml;
     document.getElementById("modal-foot").innerHTML = footHtml;
-    document.getElementById("modal-backdrop").classList.add("open");
+    const backdrop = document.getElementById("modal-backdrop");
+    const modal = document.getElementById("modal");
+    backdrop.classList.add("open");
+    beginDialog(modal, {
+      host: backdrop,
+      initial: () => {
+        const body = document.getElementById("modal-body");
+        const field = body && body.querySelector("input, select, textarea");
+        if (field) return field;
+        const foot = document.getElementById("modal-foot");
+        return foot && foot.querySelector("button");
+      },
+    });
   }
 
   function closeModal() {
     document.getElementById("modal-backdrop").classList.remove("open");
+    endDialog(document.getElementById("modal"));
   }
 
   function openAddCardModal() {
