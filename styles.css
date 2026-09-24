@@ -267,7 +267,7 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.35rem;
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--text);
@@ -682,7 +682,7 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.85rem;
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -744,7 +744,7 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 400;
+  font-weight: 700;
   flex: 1;
 }
 
@@ -1238,7 +1238,7 @@ a {
   flex: 1;
   font-family: var(--font-display);
   font-size: 1.55rem;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -1578,7 +1578,7 @@ a {
   margin: 0 0 14px;
   font-family: var(--font-display);
   font-size: 1.4rem;
-  font-weight: 400;
+  font-weight: 700;
 }
 
 .form-grid {
@@ -1737,7 +1737,7 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 400;
+  font-weight: 700;
 }
 .tool-card p {
   margin: 0;
