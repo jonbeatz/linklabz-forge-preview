@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0C0F" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>LinkLabz Forge</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260923d" />
+  <link rel="stylesheet" href="styles.css?v=20260923f" />
 </head>
 <body>
   <div class="void-bg" aria-hidden="true">
@@ -20,13 +22,30 @@
   <div class="shell" id="app">
     <!-- Floating command island -->
     <header class="island" id="island">
-      <div class="island-brand">
-        <div class="brand-mark" aria-hidden="true">
-          <span class="brand-spark"></span>
+      <div class="island-row island-row-top">
+        <div class="island-brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="brand-spark"></span>
+          </div>
+          <div class="brand-text">
+            <h1 class="wordmark">LinkLabz <em>Forge</em></h1>
+            <span class="brand-badge">review board · v1</span>
+          </div>
         </div>
-        <div class="brand-text">
-          <h1 class="wordmark">LinkLabz <em>Forge</em></h1>
-          <span class="brand-badge">review board · v1</span>
+
+        <div class="island-overflow">
+          <span class="session-chip" id="session-chip" title="Session workspace status" aria-live="polite">
+            <span class="session-dot" id="session-dot"></span>
+            <span class="session-label" id="session-label">Session</span>
+          </span>
+          <div class="more-menu">
+            <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="More workspace actions" aria-label="More workspace actions">⋯</button>
+            <div class="more-dropdown" id="more-dropdown" hidden>
+              <button type="button" id="btn-reset">↺ Reset to seed</button>
+              <button type="button" id="btn-clear-filters">⌀ Clear filters</button>
+            </div>
+            <input type="file" id="import-file" accept="application/json,.json" class="sr-only" />
+          </div>
         </div>
       </div>
 
@@ -36,50 +55,53 @@
         <button type="button" class="pill" data-view="spitballs">Spitballs <span class="pill-count" id="count-spitballs">0</span></button>
         <button type="button" class="pill" data-view="todo">To-do <span class="pill-count" id="count-todo">0</span></button>
         <button type="button" class="pill" data-view="favorites">Favorites <span class="pill-count" id="count-favorites">0</span></button>
+        <button type="button" class="pill" data-view="tools">Tools</button>
       </nav>
 
       <div class="island-tools">
-        <div class="search-wrap">
+        <button type="button" class="btn-ghost-icon search-toggle" id="btn-search-toggle" aria-label="Toggle search" aria-expanded="false" title="Search">⌕</button>
+        <div class="search-wrap" id="search-wrap">
           <span class="search-icon" aria-hidden="true">⌕</span>
-          <input type="search" id="search" placeholder="Search reviews…" autocomplete="off" />
+          <input type="search" id="search" placeholder="Search…  lane:try project:reWavz" autocomplete="off" enterkeyhint="search" />
         </div>
         <button type="button" class="kbd-chip" id="btn-cmd-palette" title="Command palette" aria-label="Open command palette">
           <span id="kbd-chip-label">⌘K</span>
         </button>
-        <button type="button" class="btn-gold" id="btn-add-card">+ Add</button>
-        <button type="button" class="btn-ghost" id="btn-export" title="Download workspace JSON">↓ Download</button>
-        <button type="button" class="btn-ghost" id="btn-import" title="Load workspace JSON">↑ Load</button>
-        <div class="more-menu">
-          <button type="button" class="btn-ghost-icon" id="btn-more" aria-haspopup="true" aria-expanded="false" title="More workspace actions" aria-label="More workspace actions">⋯</button>
-          <div class="more-dropdown" id="more-dropdown" hidden>
-            <button type="button" id="btn-reset">↺ Reset to seed</button>
-          </div>
-          <input type="file" id="import-file" accept="application/json,.json" class="sr-only" />
-        </div>
+        <button type="button" class="btn-gold" id="btn-add-card"><span class="btn-ico" aria-hidden="true">+</span><span class="btn-label"> Add</span></button>
+        <button type="button" class="btn-ghost btn-tool" id="btn-export" title="Download workspace JSON" aria-label="Download workspace">
+          <span class="btn-ico" aria-hidden="true">↓</span><span class="btn-label"> Download</span>
+        </button>
+        <button type="button" class="btn-ghost btn-tool" id="btn-import" title="Load workspace JSON" aria-label="Load workspace">
+          <span class="btn-ico" aria-hidden="true">↑</span><span class="btn-label"> Load</span>
+        </button>
       </div>
     </header>
 
     <!-- Stats strip -->
     <section class="stats-strip" id="stats-strip" aria-label="Summary">
-      <div class="stat-pill"><span class="stat-n" id="stat-total">0</span><span class="stat-l">reviewed</span></div>
-      <div class="stat-pill try"><span class="stat-n" id="stat-try">0</span><span class="stat-l">try it</span></div>
-      <div class="stat-pill parked"><span class="stat-n" id="stat-parked">0</span><span class="stat-l">parked</span></div>
-      <div class="stat-pill skipped"><span class="stat-n" id="stat-skipped">0</span><span class="stat-l">skipped</span></div>
-      <div class="stat-pill gold"><span class="stat-n" id="stat-briefs">0</span><span class="stat-l">briefs</span></div>
-      <div class="stat-pill gold"><span class="stat-n" id="stat-promoted">0</span><span class="stat-l">promoted</span></div>
-      <div class="stat-pill gold"><span class="stat-n" id="stat-favs">0</span><span class="stat-l">favorites</span></div>
+      <div class="stat-pill keep"><span class="stat-n" id="stat-total">0</span><span class="stat-l">reviewed</span></div>
+      <div class="stat-pill try keep"><span class="stat-n" id="stat-try">0</span><span class="stat-l">try it</span></div>
+      <div class="stat-pill parked keep"><span class="stat-n" id="stat-parked">0</span><span class="stat-l">parked</span></div>
+      <div class="stat-pill skipped shrink"><span class="stat-n" id="stat-skipped">0</span><span class="stat-l">skipped</span></div>
+      <div class="stat-pill gold shrink"><span class="stat-n" id="stat-briefs">0</span><span class="stat-l">briefs</span></div>
+      <div class="stat-pill gold shrink"><span class="stat-n" id="stat-promoted">0</span><span class="stat-l">promoted</span></div>
+      <div class="stat-pill gold keep"><span class="stat-n" id="stat-favs">0</span><span class="stat-l">favorites</span></div>
     </section>
 
     <!-- Board filters (board/favorites) -->
     <div class="filter-bar" id="board-filters">
       <select class="select" id="filter-lane" aria-label="Filter by lane">
         <option value="">All lanes</option>
+        <option value="inbox">Inbox</option>
         <option value="try">Try It</option>
         <option value="parked">Parked</option>
         <option value="skipped">Skipped</option>
       </select>
       <select class="select" id="filter-category" aria-label="Filter by category">
         <option value="">All categories</option>
+      </select>
+      <select class="select" id="filter-btype" aria-label="Filter bookmark type" hidden>
+        <option value="">All types</option>
       </select>
       <button type="button" class="chip" id="filter-promoted" aria-pressed="false">↑ Promoted</button>
       <button type="button" class="chip" id="filter-favorites" aria-pressed="false">★ Favorites</button>
@@ -115,7 +137,7 @@
     <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
       <div class="palette-input-wrap">
         <span class="palette-icon" aria-hidden="true">⌕</span>
-        <input type="text" id="palette-input" placeholder="Jump, filter, set lane, add, export…" autocomplete="off" spellcheck="false" />
+        <input type="text" id="palette-input" placeholder="Jump, filter, lane:try, project:…, add, export…" autocomplete="off" spellcheck="false" />
         <kbd class="palette-esc">esc</kbd>
       </div>
       <div class="palette-results" id="palette-results" role="listbox"></div>
@@ -138,6 +160,6 @@
 
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
-  <script src="app.js?v=20260923d"></script>
+  <script src="app.js?v=20260923f"></script>
 </body>
 </html>

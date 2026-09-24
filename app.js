@@ -6,13 +6,24 @@
 
   const STORAGE_KEY = "linklabz-forge-v1";
   const UNDO_MS = 7000;
-  const PROJECTS = [
+  const PROJECTS_BASE = [
     "Website-Templates",
-    "PromptLab",
-    "reWavz",
     "DigitalStudioz",
+    "Vader Desk",
+    "VideoLab",
+    "reWavz",
+    "reWavz Studio",
+    "PromptLab",
     "MSC",
     "Other",
+  ];
+  const BOOKMARK_TYPES = [
+    "Design",
+    "Template",
+    "Tutorial",
+    "YouTube harvest",
+    "Skill",
+    "Reference",
   ];
   const ACTIONS = ["implement", "cherrypick", "reference", "evaluate", "done", "pass"];
   const LANES = [
@@ -56,7 +67,12 @@
     paletteQuery: "",
     paletteIndex: 0,
     paletteItems: [],
+    filterBookmarkType: "",
+    searchOpen: false,
   };
+
+  /** @type {string|null} */
+  let sessionBaseline = null;
 
   function normalizeCard(c) {
     if (!c || typeof c !== "object") return c;
@@ -67,7 +83,33 @@
     if (c.revisitDate === undefined) c.revisitDate = "";
     if (!c.lane) c.lane = "inbox";
     if (!Array.isArray(c.cherryPick)) c.cherryPick = c.cherryPick ? [String(c.cherryPick)] : [];
+    if (!Array.isArray(c.evidence)) c.evidence = [];
+    if (c.protected === undefined) c.protected = false;
+    if (c.linkedTodoId === undefined) c.linkedTodoId = null;
+    if (c.fromSpitballId === undefined) c.fromSpitballId = null;
     return c;
+  }
+
+  function normalizeBookmark(b) {
+    if (!b || typeof b !== "object") return b;
+    if (b.bookmarkType === undefined) b.bookmarkType = "";
+    if (b.favorite === undefined) b.favorite = false;
+    return b;
+  }
+
+  function projectList() {
+    const set = new Set(PROJECTS_BASE);
+    for (const c of state.cards) {
+      if (c.goesTo) set.add(c.goesTo);
+    }
+    return [...set].sort((a, b) => {
+      const ia = PROJECTS_BASE.indexOf(a);
+      const ib = PROJECTS_BASE.indexOf(b);
+      if (ia >= 0 && ib >= 0) return ia - ib;
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return a.localeCompare(b);
+    });
   }
 
   function normalizeState(raw) {
@@ -82,7 +124,7 @@
     return {
       version: Number(raw.version) || 1,
       cards: cardsSrc.map(normalizeCard),
-      bookmarks: Array.isArray(raw.bookmarks) ? raw.bookmarks : [],
+      bookmarks: (Array.isArray(raw.bookmarks) ? raw.bookmarks : []).map(normalizeBookmark),
       spitballs: Array.isArray(raw.spitballs) ? raw.spitballs : [],
       todos: Array.isArray(raw.todos) ? raw.todos : [],
     };
@@ -94,6 +136,26 @@
     } catch (e) {
       console.warn("localStorage save failed", e);
     }
+    updateSessionChip();
+  }
+
+  function fingerprintState() {
+    return JSON.stringify(exportPayload());
+  }
+
+  function markSessionClean() {
+    sessionBaseline = fingerprintState();
+    updateSessionChip();
+  }
+
+  function updateSessionChip() {
+    const chip = document.getElementById("session-chip");
+    const label = document.getElementById("session-label");
+    if (!chip) return;
+    const dirty = sessionBaseline != null && fingerprintState() !== sessionBaseline;
+    chip.classList.toggle("dirty", dirty);
+    chip.title = dirty ? "Session workspace · unsaved changes vs baseline" : "Session workspace · clean";
+    if (label) label.textContent = dirty ? "Dirty" : "Clean";
   }
 
   function loadFromStorage() {
@@ -119,6 +181,7 @@
     } else {
       try {
         state = await loadSeed();
+        for (const c of state.cards) c.protected = true;
         save();
       } catch (e) {
         console.error(e);
@@ -126,6 +189,7 @@
       }
     }
     bindChrome();
+    markSessionClean();
     render();
   }
 
@@ -204,17 +268,62 @@
   }
 
 
+  function parseSearchQuery(raw) {
+    const ops = { lane: "", project: "", hardware: "", found: "", action: "", text: "" };
+    const parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
+    const textBits = [];
+    for (const p of parts) {
+      const m = /^(lane|project|hardware|found|action):(.+)$/i.exec(p);
+      if (m) {
+        const key = m[1].toLowerCase();
+        const val = m[2].trim();
+        if (key === "lane") ops.lane = val.toLowerCase();
+        else if (key === "project") ops.project = val.toLowerCase();
+        else if (key === "hardware") ops.hardware = val.toLowerCase();
+        else if (key === "found") ops.found = val.toLowerCase();
+        else if (key === "action") ops.action = val.toLowerCase();
+      } else {
+        textBits.push(p);
+      }
+    }
+    ops.text = textBits.join(" ").toLowerCase();
+    return ops;
+  }
+
+  function cardMatchesOps(c, ops) {
+    if (ops.lane) {
+      const lane = String(c.lane || "").toLowerCase();
+      if (lane !== ops.lane && !(ops.lane === "try" && lane === "try it")) return false;
+    }
+    if (ops.project) {
+      if (!String(c.goesTo || "").toLowerCase().includes(ops.project)) return false;
+    }
+    if (ops.hardware) {
+      if (!String(c.hardwareFit || "").toLowerCase().includes(ops.hardware)) return false;
+    }
+    if (ops.found) {
+      if (!String(c.foundBy || "").toLowerCase().includes(ops.found)) return false;
+    }
+    if (ops.action) {
+      if (!String(c.action || "").toLowerCase().includes(ops.action)) return false;
+    }
+    if (ops.text) {
+      const cherries = Array.isArray(c.cherryPick) ? c.cherryPick.join(" ") : "";
+      const evidence = Array.isArray(c.evidence) ? c.evidence.map((e) => e.text || "").join(" ") : "";
+      const hay = [
+        c.title, c.category, c.recommendation, c.gradingSummary, c.goesTo, cherries,
+        c.notes, c.relatedNotes, c.foundBy, c.hardwareFit, c.action, evidence, c.cursorBrief,
+      ].join(" ").toLowerCase();
+      if (!hay.includes(ops.text)) return false;
+    }
+    return true;
+  }
+
   function filteredCards() {
     let list = [...state.cards];
-    const q = ui.search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((c) => {
-        const cherries = Array.isArray(c.cherryPick) ? c.cherryPick.join(" ") : "";
-        const hay = [
-          c.title, c.category, c.recommendation, c.gradingSummary, c.goesTo, cherries, c.notes,
-        ].join(" ").toLowerCase();
-        return hay.includes(q);
-      });
+    const ops = parseSearchQuery(ui.search);
+    if (ops.lane || ops.project || ops.hardware || ops.found || ops.action || ops.text) {
+      list = list.filter((c) => cardMatchesOps(c, ops));
     }
     if (ui.filterLane) list = list.filter((c) => c.lane === ui.filterLane);
     if (ui.filterCategory) list = list.filter((c) => c.category === ui.filterCategory);
@@ -292,6 +401,7 @@
       { id: "favorites", label: "Favorites", icon: "★" },
       { id: "spitballs", label: "Spitballs", icon: "◎" },
       { id: "todo", label: "To-do", icon: "☑" },
+      { id: "tools", label: "Tools", icon: "⚒" },
     ];
     for (const v of views) {
       if (match(`jump to ${v.label}`) || match(v.label)) {
@@ -381,11 +491,47 @@
       }
     }
 
+    // Operator shortcuts — typing lane:try in palette also matches via keys
+    if (/^lane:(inbox|try|parked|skipped)\b/i.test(q) || match("lane:")) {
+      for (const lane of LANES) {
+        items.push({
+          id: `op-lane-${lane.id}`, group: "Search operators",
+          label: `lane:${lane.id}`, icon: "⌕", meta: lane.label,
+          run: () => {
+            ui.view = "board";
+            ui.search = `lane:${lane.id}`;
+            document.getElementById("search").value = ui.search;
+            closePalette(); render();
+          },
+        });
+      }
+    }
+    if (match("project:") || q.startsWith("project:")) {
+      for (const p of projectList().slice(0, 12)) {
+        if (!q.startsWith("project:") || p.toLowerCase().includes(q.slice(8))) {
+          items.push({
+            id: `op-proj-${p}`, group: "Search operators",
+            label: `project:${p}`, icon: "⌕", meta: "goes to",
+            run: () => {
+              ui.view = "board";
+              ui.search = `project:${p.replace(/\s+/g, "")}`;
+              // keep readable form with original casing/spaces
+              ui.search = `project:${p}`;
+              document.getElementById("search").value = ui.search;
+              closePalette(); render();
+            },
+          });
+        }
+      }
+    }
+
     const filters = [
+      { id: "f-lane-inbox", label: "Filter lane: Inbox", keys: "filter inbox lane", run: () => applyLaneFilter("inbox") },
       { id: "f-lane-try", label: "Filter lane: Try It", keys: "filter try it lane", run: () => applyLaneFilter("try") },
       { id: "f-lane-parked", label: "Filter lane: Parked", keys: "filter parked lane", run: () => applyLaneFilter("parked") },
       { id: "f-lane-skipped", label: "Filter lane: Skipped", keys: "filter skipped lane", run: () => applyLaneFilter("skipped") },
       { id: "f-lane-all", label: "Clear lane filter", keys: "filter all lanes clear", run: () => applyLaneFilter("") },
+      { id: "f-clear-all", label: "Clear all filters", keys: "clear filters reset search", run: () => clearFilters() },
       { id: "f-promoted", label: "Filter: Promoted only", keys: "filter promoted only",
         run: () => { ui.view = "board"; ui.filterPromoted = true; syncFilterChrome(); render(); toast("Promoted only"); } },
       { id: "f-fav", label: "Filter: Favorites only", keys: "filter favorites only",
@@ -452,9 +598,41 @@
   }
 
 
+  function clearFilters() {
+    ui.filterLane = "";
+    ui.filterCategory = "";
+    ui.filterPromoted = false;
+    ui.filterFavorites = false;
+    ui.filterProject = "";
+    ui.filterBookmarkType = "";
+    ui.search = "";
+    const search = document.getElementById("search");
+    if (search) search.value = "";
+    syncFilterChrome();
+    render();
+    toast("Filters cleared");
+  }
+
+  function setSearchOpen(open) {
+    ui.searchOpen = open;
+    const island = document.getElementById("island");
+    const btn = document.getElementById("btn-search-toggle");
+    if (island) island.classList.toggle("search-open", open);
+    if (btn) btn.setAttribute("aria-expanded", String(open));
+    if (open) {
+      const input = document.getElementById("search");
+      if (input) requestAnimationFrame(() => input.focus());
+    }
+  }
+
   function bindChrome() {
     const kbdLabel = document.getElementById("kbd-chip-label");
     if (kbdLabel) kbdLabel.textContent = isMacPlatform() ? "⌘K" : "Ctrl+K";
+
+    const searchToggle = document.getElementById("btn-search-toggle");
+    if (searchToggle) {
+      searchToggle.addEventListener("click", () => setSearchOpen(!ui.searchOpen));
+    }
 
     document.getElementById("nav").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-view]");
@@ -554,6 +732,13 @@
       closeMoreMenu();
       resetToSeed();
     });
+    const clearBtn = document.getElementById("btn-clear-filters");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        closeMoreMenu();
+        clearFilters();
+      });
+    }
 
     document.getElementById("drawer-close").addEventListener("click", closeDrawer);
     document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
@@ -619,17 +804,22 @@
     projectStrip.classList.toggle("hidden", !showBoardChrome && ui.view !== "favorites");
 
     search.placeholder =
-      ui.view === "board" ? "Search title, category, recommendation…"
+      ui.view === "board" ? "Search… lane:try project:reWavz hardware:rtx"
       : ui.view === "bookmarks" ? "Search bookmarks…"
       : ui.view === "spitballs" ? "Search spitballs…"
       : ui.view === "todo" ? "Search to-dos…"
+      : ui.view === "tools" ? "Tools shelf"
       : "Search favorites…";
 
     const addBtn = document.getElementById("btn-add-card");
-    if (ui.view === "bookmarks") addBtn.textContent = "+ Bookmark";
-    else if (ui.view === "spitballs") addBtn.textContent = "+ Spitball";
-    else if (ui.view === "todo") addBtn.textContent = "+ To-do";
-    else addBtn.textContent = "+ Add";
+    const label =
+      ui.view === "bookmarks" ? " Bookmark"
+      : ui.view === "spitballs" ? " Spitball"
+      : ui.view === "todo" ? " To-do"
+      : ui.view === "tools" ? " Add"
+      : " Add";
+    addBtn.innerHTML = `<span class="btn-ico" aria-hidden="true">+</span><span class="btn-label">${label}</span>`;
+    addBtn.classList.toggle("hidden", ui.view === "tools");
 
     const catSel = document.getElementById("filter-category");
     const cur = catSel.value;
@@ -654,7 +844,7 @@
     }
     strip.innerHTML =
       `<button type="button" class="project-chip ${ui.filterProject === "" ? "on" : ""}" data-project="">All projects</button>` +
-      PROJECTS.map(
+      projectList().map(
         (p) =>
           `<button type="button" class="project-chip ${ui.filterProject === p ? "on" : ""}" data-project="${escapeHtml(p)}">${escapeHtml(p)}</button>`
       ).join("");
@@ -685,6 +875,7 @@
     else if (ui.view === "favorites") canvas.innerHTML = renderFavorites();
     else if (ui.view === "spitballs") canvas.innerHTML = renderSpitballs();
     else if (ui.view === "todo") canvas.innerHTML = renderTodos();
+    else if (ui.view === "tools") canvas.innerHTML = renderTools();
     wireCanvasEvents(canvas);
   }
 
@@ -694,6 +885,7 @@
       <article class="card" tabindex="0" data-card-id="${escapeHtml(c.id)}" role="button" aria-label="Open ${escapeHtml(c.title)}">
         <div class="card-top">
           <h3 class="card-title">${escapeHtml(c.title)}</h3>
+          ${c.protected ? `<span class="badge lock" title="Protected seed">🔒</span>` : ""}
           <button type="button" class="card-fav ${c.favorite ? "on" : ""}" data-fav="${escapeHtml(c.id)}" aria-label="Toggle favorite" title="Favorite">${c.favorite ? "★" : "☆"}</button>
         </div>
         <div class="card-meta">
@@ -719,7 +911,7 @@
           <p>${list.length} card${list.length === 1 ? "" : "s"} · magazine lanes · amber forge</p>
         </div>
       </div>`;
-    if (!list.length) return header + `<div class="empty-state">No cards match filters.</div>`;
+    if (!list.length) return header + `<div class="empty-state"><p>No cards match filters.</p><button type="button" class="btn-ghost" data-empty-clear>Clear filters</button></div>`;
     if (ui.layout === "grid") return header + `<div class="bento">${list.map(cardEl).join("")}</div>`;
 
     let html = header + `<div class="lanes">`;
@@ -746,22 +938,31 @@
   function renderBookmarks() {
     const q = ui.search.trim().toLowerCase();
     let list = [...state.bookmarks];
-    if (q) list = list.filter((b) => [b.title, b.url, b.note].join(" ").toLowerCase().includes(q));
+    if (ui.filterBookmarkType) list = list.filter((b) => b.bookmarkType === ui.filterBookmarkType);
+    if (q) list = list.filter((b) => [b.title, b.url, b.note, b.bookmarkType].join(" ").toLowerCase().includes(q));
     list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const typeChips = BOOKMARK_TYPES.map((t) =>
+      `<button type="button" class="chip ${ui.filterBookmarkType === t ? "on" : ""}" data-btype="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+    ).join("");
     return `
-      <div class="canvas-header"><div><h2>Bookmarks</h2><p>Lightweight quick-saves — title, link, one-liner.</p></div></div>
+      <div class="canvas-header"><div><h2>Bookmarks</h2><p>Lightweight quick-saves — title, link, type, one-liner.</p></div></div>
+      <div class="project-strip" style="margin-bottom:12px">
+        <button type="button" class="chip ${ui.filterBookmarkType === "" ? "on" : ""}" data-btype="">All types</button>
+        ${typeChips}
+      </div>
       <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-bookmark">+ Add bookmark</button></div>
       <div class="shelf">
         ${list.length ? list.map((b) => `
             <div class="shelf-item" data-bm-id="${escapeHtml(b.id)}">
               <div class="shelf-item-top">
                 <h4>${escapeHtml(b.title)}</h4>
+                ${b.bookmarkType ? `<span class="badge type">${escapeHtml(b.bookmarkType)}</span>` : ""}
                 <button type="button" class="card-fav ${b.favorite ? "on" : ""}" data-bm-fav="${escapeHtml(b.id)}">${b.favorite ? "★" : "☆"}</button>
                 <button type="button" class="btn-ghost" data-bm-del="${escapeHtml(b.id)}" style="padding:4px 8px;font-size:0.75rem">Delete</button>
               </div>
               <a class="link-out" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.url)}</a>
               <p>${escapeHtml(b.note || "")}</p>
-            </div>`).join("") : `<div class="empty-state">No bookmarks yet.</div>`}
+            </div>`).join("") : `<div class="empty-state"><p>No bookmarks yet.</p><button type="button" class="btn-gold" id="btn-add-bookmark-empty">+ Add bookmark</button></div>`}
       </div>`;
   }
 
@@ -777,15 +978,15 @@
     return `
       <div class="canvas-header"><div><h2>Favorites</h2><p>Cross-shelf: favorited reviews + bookmarks.</p></div></div>
       <h3 style="font-family:var(--font-display);font-size:1.1rem;margin:8px 0 10px;color:var(--text-muted)">Reviews</h3>
-      ${cards.length ? `<div class="bento">${cards.map(cardEl).join("")}</div>` : `<div class="empty-state">No favorite reviews.</div>`}
+      ${cards.length ? `<div class="bento">${cards.map(cardEl).join("")}</div>` : `<div class="empty-state"><p>No favorite reviews.</p><button type="button" class="btn-ghost" data-empty-goto-board>Browse reviews</button></div>`}
       <h3 style="font-family:var(--font-display);font-size:1.1rem;margin:22px 0 10px;color:var(--text-muted)">Bookmarks</h3>
       <div class="shelf">
         ${bms.length ? bms.map((b) => `
             <div class="shelf-item">
-              <div class="shelf-item-top"><h4>${escapeHtml(b.title)}</h4></div>
+              <div class="shelf-item-top"><h4>${escapeHtml(b.title)}</h4>${b.bookmarkType ? `<span class="badge type">${escapeHtml(b.bookmarkType)}</span>` : ""}</div>
               <a class="link-out" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.url)}</a>
               <p>${escapeHtml(b.note || "")}</p>
-            </div>`).join("") : `<div class="empty-state">No favorite bookmarks.</div>`}
+            </div>`).join("") : `<div class="empty-state"><p>No favorite bookmarks.</p></div>`}
       </div>`;
   }
 
@@ -794,9 +995,15 @@
     let list = [...state.spitballs];
     if (q) list = list.filter((s) => [s.title, s.body].join(" ").toLowerCase().includes(q));
     list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const gradLabel = (s) => {
+      const stage = s.stage || "spitball";
+      if (stage === "spitball") return "Graduate to reviewed";
+      if (stage === "reviewed") return "Graduate to promoted";
+      return "Already promoted";
+    };
     return `
-      <div class="canvas-header"><div><h2>Spitballs</h2><p>Raw future-project ideas. Funnel: Spitball → Reviewed → Promoted.</p></div></div>
-      <div class="funnel-note">Spitball → Reviewed → Promoted · graduate moves stage forward</div>
+      <div class="canvas-header"><div><h2>Spitballs</h2><p>Raw future-project ideas. Funnel: Spitball → Reviewed (Inbox) → Promoted.</p></div></div>
+      <div class="funnel-note">Spitball → Reviewed lands a card in Inbox · then Promote</div>
       <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-spitball">+ Add spitball</button></div>
       <div class="shelf">
         ${list.length ? list.map((s) => `
@@ -807,10 +1014,10 @@
               </div>
               <p>${escapeHtml(s.body || "")}</p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                <button type="button" class="btn-ghost" data-sb-grad="${escapeHtml(s.id)}" style="font-size:0.78rem">Graduate →</button>
+                <button type="button" class="btn-ghost grad-btn" data-sb-grad="${escapeHtml(s.id)}" ${(s.stage || "spitball") === "promoted" ? "disabled" : ""}>${gradLabel(s)}</button>
                 <button type="button" class="btn-danger" data-sb-del="${escapeHtml(s.id)}" style="font-size:0.78rem;padding:6px 10px">Delete</button>
               </div>
-            </div>`).join("") : `<div class="empty-state">No spitballs.</div>`}
+            </div>`).join("") : `<div class="empty-state"><p>No spitballs.</p><button type="button" class="btn-gold" id="btn-add-spitball-empty">+ Add spitball</button></div>`}
       </div>`;
   }
 
@@ -839,10 +1046,30 @@
     return `
       <div class="canvas-header"><div><h2>To-do</h2><p>Personal tracker — check-off, severity, reorder, parking lane.</p></div></div>
       <div class="shelf-toolbar"><button type="button" class="btn-gold" id="btn-add-todo">+ Add to-do</button></div>
-      <div class="shelf">${active.length ? active.map(item).join("") : `<div class="empty-state">Inbox clear.</div>`}</div>
+      <div class="shelf">${active.length ? active.map(item).join("") : `<div class="empty-state"><p>Inbox clear.</p><button type="button" class="btn-gold" id="btn-add-todo-empty">+ Add to-do</button></div>`}</div>
       <div class="parked-zone">
         <div class="label">Parking lane</div>
         <div class="shelf">${parked.length ? parked.map(item).join("") : `<div class="empty-state" style="padding:16px">Nothing parked.</div>`}</div>
+      </div>`;
+  }
+
+  function renderTools() {
+    const tools = [
+      { id: "download", ico: "↓", title: "Download workspace", desc: "Export the full Forge JSON (reviews, bookmarks, spitballs, todos).", run: "export" },
+      { id: "load", ico: "↑", title: "Load workspace", desc: "Import a previously downloaded Forge workspace JSON.", run: "import" },
+      { id: "reset", ico: "↺", title: "Reset to seed", desc: "Restore the amber seed board and clear local edits.", run: "reset" },
+      { id: "clear", ico: "⌀", title: "Clear filters", desc: "Drop lane, project, search, and chip filters.", run: "clear" },
+      { id: "palette", ico: "⌘", title: "Open command palette", desc: "Jump, filter with operators, add, or export without leaving the board.", run: "palette" },
+    ];
+    return `
+      <div class="canvas-header"><div><h2>Tools</h2><p>Workspace utilities — amber forge shelf, not a Muse clone.</p></div></div>
+      <div class="tools-grid">
+        ${tools.map((t) => `
+          <button type="button" class="tool-card" data-tool="${t.run}">
+            <span class="tool-ico" aria-hidden="true">${t.ico}</span>
+            <h3>${escapeHtml(t.title)}</h3>
+            <p>${escapeHtml(t.desc)}</p>
+          </button>`).join("")}
       </div>`;
   }
 
@@ -905,6 +1132,34 @@
     canvas.querySelectorAll("[data-todo-del]").forEach((btn) => {
       btn.addEventListener("click", () => deleteTodo(btn.dataset.todoDel));
     });
+    const addBmEmpty = canvas.querySelector("#btn-add-bookmark-empty");
+    if (addBmEmpty) addBmEmpty.addEventListener("click", openAddBookmarkModal);
+    const addSbEmpty = canvas.querySelector("#btn-add-spitball-empty");
+    if (addSbEmpty) addSbEmpty.addEventListener("click", openAddSpitballModal);
+    const addTdEmpty = canvas.querySelector("#btn-add-todo-empty");
+    if (addTdEmpty) addTdEmpty.addEventListener("click", openAddTodoModal);
+    canvas.querySelectorAll("[data-empty-clear]").forEach((btn) => {
+      btn.addEventListener("click", clearFilters);
+    });
+    canvas.querySelectorAll("[data-empty-goto-board]").forEach((btn) => {
+      btn.addEventListener("click", () => { ui.view = "board"; render(); });
+    });
+    canvas.querySelectorAll("[data-btype]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ui.filterBookmarkType = btn.dataset.btype || "";
+        renderCanvas();
+      });
+    });
+    canvas.querySelectorAll("[data-tool]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const run = btn.dataset.tool;
+        if (run === "export") exportJson();
+        else if (run === "import") document.getElementById("import-file").click();
+        else if (run === "reset") resetToSeed();
+        else if (run === "clear") clearFilters();
+        else if (run === "palette") openPalette();
+      });
+    });
   }
 
   function getCard(id) { return state.cards.find((c) => c.id === id); }
@@ -920,6 +1175,10 @@
   function deleteCard(id) {
     const idx = state.cards.findIndex((c) => c.id === id);
     if (idx < 0) return;
+    const target = state.cards[idx];
+    if (target.protected) {
+      if (!confirm(`“${target.title}” is a protected seed card. Delete anyway?`)) return;
+    }
     const [removed] = state.cards.splice(idx, 1);
     save(); closeDrawer(); render();
     if (ui.undoTimer) clearTimeout(ui.undoTimer);
@@ -975,14 +1234,164 @@
   function graduateSpitball(id) {
     const s = state.spitballs.find((x) => x.id === id);
     if (!s) return;
-    const flow = ["spitball", "reviewed", "promoted"];
-    const i = flow.indexOf(s.stage || "spitball");
-    if (i < flow.length - 1) {
-      s.stage = flow[i + 1];
-      save(); render(); toast(`Stage → ${s.stage}`);
-    } else toast("Already promoted");
+    const stage = s.stage || "spitball";
+    if (stage === "spitball") {
+      const card = normalizeCard({
+        id: uid("card"),
+        title: s.title,
+        url: "#",
+        lane: "inbox",
+        category: "Other",
+        rating: 3,
+        recommendation: s.body || "",
+        cherryPick: [],
+        gradingSummary: "Graduated from spitball",
+        relatedNotes: "",
+        cursorBrief: `## Cursor brief: ${s.title}\n\n### From spitball\n${s.body || ""}`,
+        goesTo: "",
+        foundBy: "Spitball graduate",
+        hardwareFit: "No hardware dependency",
+        revisitDate: "",
+        promoted: false,
+        favorite: false,
+        action: "evaluate",
+        createdAt: new Date().toISOString(),
+        screenshot: null,
+        screenshotDriveUrl: null,
+        fromSpitballId: s.id,
+        protected: false,
+        evidence: [],
+      });
+      state.cards.unshift(card);
+      s.stage = "reviewed";
+      s.graduatedCardId = card.id;
+      save();
+      ui.view = "board";
+      ui.filterLane = "inbox";
+      syncFilterChrome();
+      render();
+      openDrawer(card.id);
+      toast("Graduated to Inbox · review card created");
+      return;
+    }
+    if (stage === "reviewed") {
+      s.stage = "promoted";
+      if (s.graduatedCardId) {
+        const c = getCard(s.graduatedCardId);
+        if (c) c.promoted = true;
+      }
+      save(); render();
+      toast("Stage → promoted");
+      return;
+    }
+    toast("Already promoted");
   }
 
+
+
+  async function copyText(text, okMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(okMsg || "Copied");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      toast(okMsg || "Copied");
+    }
+  }
+
+  function buildCardMarkdown(c) {
+    const cherries = Array.isArray(c.cherryPick) ? c.cherryPick : [];
+    const evidence = Array.isArray(c.evidence) ? c.evidence : [];
+    const lines = [
+      `# ${c.title}`,
+      "",
+      `- **URL:** ${c.url || ""}`,
+      `- **Lane:** ${c.lane || ""}`,
+      `- **Rating:** ${c.rating || 0}/5 (${RATING_RUBRIC[c.rating] || "—"})`,
+      `- **Category:** ${c.category || ""}`,
+      `- **Goes to:** ${c.goesTo || "—"}`,
+      `- **Action:** ${c.action || "—"}`,
+      `- **Found by:** ${c.foundBy || "—"}`,
+      `- **Hardware:** ${c.hardwareFit || "—"}`,
+      "",
+      "## Recommendation",
+      c.recommendation || "—",
+      "",
+      "## Cherry-pick",
+      ...(cherries.length ? cherries.map((x) => `- ${x}`) : ["- None"]),
+      "",
+      "## Grading summary",
+      c.gradingSummary || "—",
+      "",
+      "## Related notes",
+      c.relatedNotes || c.notes || "—",
+      "",
+      "## Cursor brief",
+      c.cursorBrief || "—",
+      "",
+      "## Evidence",
+      ...(evidence.length
+        ? evidence.map((e) => `- [${e.done ? "x" : " "}] ${e.text || ""}`)
+        : ["- None"]),
+    ];
+    return lines.join("\n");
+  }
+
+  function buildBridgeNote(c) {
+    const path = c.goesTo || c.category || "—";
+    const rec = (c.recommendation || "").trim();
+    const next = c.action || (rec ? rec.split(/[.\n]/)[0] : "") || "Review next";
+    return [
+      `Verdict: ${rec || (RATING_RUBRIC[c.rating] || "—")}`,
+      `Path: ${path}`,
+      `Lane: ${c.lane || "—"} · ${c.rating || 0}/5`,
+      `Next: ${String(next).trim()}`,
+      `Link: ${c.url || ""}`,
+    ].join("\n");
+  }
+
+  function buildShareBlock(c) {
+    return [
+      c.title || "Untitled",
+      c.url || "",
+      `Lane: ${c.lane || "—"} · Rating: ${c.rating || 0}/5`,
+      c.goesTo ? `Goes to: ${c.goesTo}` : null,
+      `Forge · ${c.id}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  function linkTodoFromCard(c) {
+    const text = `Review: ${c.title}`;
+    const existing = c.linkedTodoId && state.todos.find((t) => t.id === c.linkedTodoId);
+    if (existing) {
+      ui.view = "todo";
+      closeDrawer();
+      render();
+      toast("Linked to-do already exists — jumped to To-do");
+      return;
+    }
+    const maxOrder = state.todos.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
+    const todo = {
+      id: uid("todo"),
+      text,
+      done: false,
+      severity: "med",
+      parked: false,
+      order: maxOrder + 1,
+      createdAt: new Date().toISOString(),
+      linkedCardId: c.id,
+    };
+    state.todos.push(todo);
+    c.linkedTodoId = todo.id;
+    save();
+    openDrawer(c.id);
+    toast("Linked to-do created");
+  }
 
   function openDrawer(id) {
     const c = getCard(id);
@@ -1020,15 +1429,19 @@
       <div class="drawer-actions-row">
         <a class="btn-primary" href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Open link ↗</a>
         <button type="button" class="btn-ghost" id="d-copy-brief">Copy Cursor brief</button>
+        <button type="button" class="btn-ghost" id="d-copy-md">Copy Markdown</button>
+        <button type="button" class="btn-ghost" id="d-copy-bridge">Copy bridge note</button>
+        <button type="button" class="btn-ghost" id="d-share">Share card</button>
+        <button type="button" class="btn-ghost" id="d-link-todo">${c.linkedTodoId ? "Open linked to-do" : "Linked to-do"}</button>
         <button type="button" class="btn-ghost" id="d-fav">${c.favorite ? "★ Favorited" : "☆ Favorite"}</button>
         <button type="button" class="btn-ghost" id="d-promote">${c.promoted ? "↑ Promoted" : "Promote"}</button>
-        <button type="button" class="btn-danger" id="d-delete">Delete</button>
+        <button type="button" class="btn-danger" id="d-delete" ${c.protected ? 'title="Protected seed — confirms harder"' : ""}>${c.protected ? "🔒 Delete" : "Delete"}</button>
       </div>
       <div>
         <div class="field-label">Goes to</div>
         <select class="goes-select" id="d-goes">
           <option value="">— none —</option>
-          ${PROJECTS.map((p) => `<option value="${escapeHtml(p)}" ${c.goesTo === p ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}
+          ${projectList().map((p) => `<option value="${escapeHtml(p)}" ${c.goesTo === p ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}
         </select>
       </div>
       <div class="field-block"><div class="field-label">Category · ${escapeHtml(c.category || "—")}</div></div>
@@ -1070,6 +1483,20 @@
         <div class="field-label">Cursor brief</div>
         <pre class="brief-box" id="d-brief">${escapeHtml(c.cursorBrief || "")}</pre>
       </div>
+      <div class="field-block">
+        <div class="field-label">Evidence checklist</div>
+        <div class="evidence-list" id="d-evidence">
+          ${(Array.isArray(c.evidence) ? c.evidence : []).map((e, i) => `
+            <label class="evidence-row ${e.done ? "done" : ""}">
+              <input type="checkbox" data-ev-i="${i}" ${e.done ? "checked" : ""} />
+              <span>${escapeHtml(e.text || "")}</span>
+            </label>`).join("") || `<p style="color:var(--text-dim);font-size:0.85rem;margin:0">No evidence items yet.</p>`}
+        </div>
+        <div class="evidence-add">
+          <input type="text" id="d-ev-input" placeholder="Add evidence item…" />
+          <button type="button" class="btn-ghost" id="d-ev-add">Add</button>
+        </div>
+      </div>
       <div>
         <div class="field-label">Reference screenshot / comp</div>
         <div class="screenshot-slot" id="d-shot-slot">
@@ -1085,25 +1512,53 @@
     backdrop.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
 
-    document.getElementById("d-copy-brief").addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(c.cursorBrief || "");
-        toast("Cursor brief copied");
-      } catch {
-        const ta = document.createElement("textarea");
-        ta.value = c.cursorBrief || "";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        ta.remove();
-        toast("Cursor brief copied");
-      }
+    document.getElementById("d-copy-brief").addEventListener("click", () => {
+      copyText(c.cursorBrief || "", "Cursor brief copied");
     });
+    document.getElementById("d-copy-md").addEventListener("click", () => {
+      copyText(buildCardMarkdown(c), "Markdown brief copied");
+    });
+    document.getElementById("d-copy-bridge").addEventListener("click", () => {
+      copyText(buildBridgeNote(c), "Bridge note copied");
+    });
+    document.getElementById("d-share").addEventListener("click", () => {
+      copyText(buildShareBlock(c), "Share card copied");
+    });
+    document.getElementById("d-link-todo").addEventListener("click", () => linkTodoFromCard(c));
     document.getElementById("d-fav").addEventListener("click", () => toggleFavorite(c.id));
     document.getElementById("d-promote").addEventListener("click", () => {
       c.promoted = !c.promoted; save(); render(); openDrawer(c.id);
     });
     document.getElementById("d-delete").addEventListener("click", () => deleteCard(c.id));
+
+    const evList = document.getElementById("d-evidence");
+    if (evList) {
+      evList.addEventListener("change", (e) => {
+        const input = e.target.closest("[data-ev-i]");
+        if (!input) return;
+        const i = Number(input.dataset.evI);
+        if (!Array.isArray(c.evidence) || !c.evidence[i]) return;
+        c.evidence[i].done = !!input.checked;
+        save();
+        openDrawer(c.id);
+      });
+    }
+    const evAdd = document.getElementById("d-ev-add");
+    const evInput = document.getElementById("d-ev-input");
+    if (evAdd && evInput) {
+      const addEv = () => {
+        const text = evInput.value.trim();
+        if (!text) return;
+        if (!Array.isArray(c.evidence)) c.evidence = [];
+        c.evidence.push({ id: uid("ev"), text, done: false });
+        save();
+        openDrawer(c.id);
+      };
+      evAdd.addEventListener("click", addEv);
+      evInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); addEv(); }
+      });
+    }
     document.getElementById("d-stars").addEventListener("click", (e) => {
       const b = e.target.closest("[data-star]");
       if (!b) return;
@@ -1194,7 +1649,7 @@
         <label>Section<select id="f-lane">${LANES.map((l) => `<option value="${l.id}" ${l.id === "inbox" ? "selected" : ""}>${l.label}</option>`).join("")}</select></label>
         <label>Action<select id="f-action">${ACTIONS.map((a) => `<option value="${a}">${a}</option>`).join("")}</select></label>
         <label>Category<input id="f-cat" placeholder="Tool / Design / API…" /></label>
-        <label>Goes to<select id="f-goes"><option value="">— none —</option>${PROJECTS.map((p) => `<option value="${p}">${p}</option>`).join("")}</select></label>
+        <label>Goes to<select id="f-goes"><option value="">— none —</option>${projectList().map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("")}</select></label>
         <label>Found by<input id="f-found" placeholder="Name or source" /></label>
         <label>Hardware fit<select id="f-hw">${HARDWARE_FITS.map((h) => `<option value="${h}">${h}</option>`).join("")}</select></label>
         <label>Revisit date<input id="f-revisit" type="date" /></label>
@@ -1249,6 +1704,10 @@
       `<div class="form-grid">
         <label>Title<input id="f-title" /></label>
         <label>URL<input id="f-url" type="url" placeholder="https://" /></label>
+        <label>Bookmark type<select id="f-btype">
+          <option value="">— none —</option>
+          ${BOOKMARK_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("")}
+        </select></label>
         <label>One-liner<textarea id="f-note" rows="2"></textarea></label>
       </div>`,
       `<button type="button" class="btn-ghost" id="modal-cancel">Cancel</button>
@@ -1259,11 +1718,12 @@
       const title = document.getElementById("f-title").value.trim();
       const url = document.getElementById("f-url").value.trim();
       if (!title || !url) { toast("Title and URL required"); return; }
-      state.bookmarks.unshift({
+      state.bookmarks.unshift(normalizeBookmark({
         id: uid("bm"), title, url,
         note: document.getElementById("f-note").value.trim(),
+        bookmarkType: document.getElementById("f-btype").value,
         favorite: false, createdAt: new Date().toISOString(),
-      });
+      }));
       save(); closeModal(); render(); toast("Bookmark saved");
     };
   }
@@ -1374,7 +1834,9 @@
           return;
         }
         state = next;
-        save(); closeDrawer(); render();
+        save(); closeDrawer();
+        markSessionClean();
+        render();
         toast(`Workspace loaded · ${state.cards.length} reviews`);
       } catch {
         toast("Could not parse JSON");
@@ -1387,11 +1849,13 @@
     if (!confirm("Reset all Forge data to seed? This clears local changes.")) return;
     try {
       state = await loadSeed();
+      for (const c of state.cards) c.protected = true;
       save(); closeDrawer();
       ui.filterLane = ""; ui.filterCategory = "";
       ui.filterPromoted = false; ui.filterFavorites = false;
-      ui.filterProject = ""; ui.search = "";
+      ui.filterProject = ""; ui.filterBookmarkType = ""; ui.search = "";
       document.getElementById("search").value = "";
+      markSessionClean();
       render(); toast("Reset to seed");
     } catch {
       toast("Reset failed — seed.json missing?");

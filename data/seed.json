@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 1.1,
   "reviews": [
     {
       "id": "card-comfyui-ref2va",
@@ -23,7 +23,13 @@
       "action": "implement",
       "createdAt": "2026-09-18T16:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-opendesign",
@@ -47,7 +53,13 @@
       "action": "cherrypick",
       "createdAt": "2026-09-19T14:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-grit-chaos",
@@ -72,7 +84,13 @@
       "action": "cherrypick",
       "createdAt": "2026-09-21T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-aning",
@@ -96,7 +114,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-20T12:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-noizefield",
@@ -120,7 +144,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-17T11:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-minimax-h3",
@@ -145,7 +175,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-22T09:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-uvr-gui",
@@ -169,7 +205,13 @@
       "action": "reference",
       "createdAt": "2026-09-16T13:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-robosync",
@@ -193,7 +235,13 @@
       "action": "reference",
       "createdAt": "2026-09-15T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-stemkit",
@@ -218,7 +266,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-21T16:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-ship-ios-codex",
@@ -242,7 +296,13 @@
       "action": "reference",
       "createdAt": "2026-09-14T12:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-pamplejuce",
@@ -267,7 +327,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-20T18:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-osmantic-ods",
@@ -290,7 +356,13 @@
       "action": "reference",
       "createdAt": "2026-09-15T11:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-official-higgsfield",
@@ -313,7 +385,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-14T18:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-odin-dexed",
@@ -337,7 +415,13 @@
       "action": "reference",
       "createdAt": "2026-09-13T14:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-openhigg",
@@ -360,7 +444,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-12T09:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-rundown-ios",
@@ -383,7 +473,13 @@
       "action": "reference",
       "createdAt": "2026-09-10T13:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-metagpt",
@@ -403,7 +499,13 @@
       "action": "pass",
       "createdAt": "2026-09-08T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-3d-engine-mcp-control-blender-unreal-uni",
@@ -424,7 +526,13 @@
       "action": "reference",
       "createdAt": "2026-09-21T03:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-flutterflow",
@@ -445,7 +553,13 @@
       "action": "reference",
       "createdAt": "2026-09-21T04:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-higgsfield-ai-higgsfield",
@@ -466,7 +580,13 @@
       "action": "pass",
       "createdAt": "2026-09-21T06:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     }
   ],
   "cards": [
@@ -492,7 +612,13 @@
       "action": "implement",
       "createdAt": "2026-09-18T16:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-opendesign",
@@ -516,7 +642,13 @@
       "action": "cherrypick",
       "createdAt": "2026-09-19T14:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-grit-chaos",
@@ -541,7 +673,13 @@
       "action": "cherrypick",
       "createdAt": "2026-09-21T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-aning",
@@ -565,7 +703,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-20T12:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-noizefield",
@@ -589,7 +733,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-17T11:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-minimax-h3",
@@ -614,7 +764,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-22T09:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-uvr-gui",
@@ -638,7 +794,13 @@
       "action": "reference",
       "createdAt": "2026-09-16T13:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-robosync",
@@ -662,7 +824,13 @@
       "action": "reference",
       "createdAt": "2026-09-15T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-stemkit",
@@ -687,7 +855,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-21T16:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-ship-ios-codex",
@@ -711,7 +885,13 @@
       "action": "reference",
       "createdAt": "2026-09-14T12:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-pamplejuce",
@@ -736,7 +916,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-20T18:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-osmantic-ods",
@@ -759,7 +945,13 @@
       "action": "reference",
       "createdAt": "2026-09-15T11:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-official-higgsfield",
@@ -782,7 +974,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-14T18:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-odin-dexed",
@@ -806,7 +1004,13 @@
       "action": "reference",
       "createdAt": "2026-09-13T14:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-openhigg",
@@ -829,7 +1033,13 @@
       "action": "evaluate",
       "createdAt": "2026-09-12T09:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-rundown-ios",
@@ -852,7 +1062,13 @@
       "action": "reference",
       "createdAt": "2026-09-10T13:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-metagpt",
@@ -872,7 +1088,13 @@
       "action": "pass",
       "createdAt": "2026-09-08T10:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-3d-engine-mcp-control-blender-unreal-uni",
@@ -893,7 +1115,13 @@
       "action": "reference",
       "createdAt": "2026-09-21T03:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-flutterflow",
@@ -914,7 +1142,13 @@
       "action": "reference",
       "createdAt": "2026-09-21T04:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     },
     {
       "id": "card-higgsfield-ai-higgsfield",
@@ -935,7 +1169,13 @@
       "action": "pass",
       "createdAt": "2026-09-21T06:00:00Z",
       "screenshot": null,
-      "screenshotDriveUrl": null
+      "screenshotDriveUrl": null,
+      "protected": true,
+      "evidence": [],
+      "foundBy": "",
+      "hardwareFit": "No hardware dependency",
+      "revisitDate": "",
+      "linkedTodoId": null
     }
   ],
   "bookmarks": [
@@ -945,7 +1185,8 @@
       "url": "https://godui.design",
       "note": "Motion / glass inspo shelf \u2014 patterns only, never brand.",
       "favorite": true,
-      "createdAt": "2026-09-20T12:00:00Z"
+      "createdAt": "2026-09-20T12:00:00Z",
+      "bookmarkType": ""
     },
     {
       "id": "bm-glassmorphism",
@@ -953,7 +1194,8 @@
       "url": "https://ui.glass",
       "note": "Reference blur / border recipes for boards.",
       "favorite": false,
-      "createdAt": "2026-09-21T09:00:00Z"
+      "createdAt": "2026-09-21T09:00:00Z",
+      "bookmarkType": ""
     },
     {
       "id": "bm-instrument",
@@ -961,7 +1203,8 @@
       "url": "https://fonts.google.com/specimen/Instrument+Serif",
       "note": "Display face used on Forge wordmark.",
       "favorite": false,
-      "createdAt": "2026-09-22T08:00:00Z"
+      "createdAt": "2026-09-22T08:00:00Z",
+      "bookmarkType": ""
     }
   ],
   "spitballs": [
