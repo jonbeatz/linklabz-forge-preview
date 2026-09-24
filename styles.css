@@ -267,7 +267,8 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 28;
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--text);
@@ -275,6 +276,8 @@ a {
 
 .wordmark em {
   font-style: italic;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 28;
   color: var(--amber);
 }
 
@@ -683,8 +686,9 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.85rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 36;
+  letter-spacing: -0.025em;
 }
 
 .canvas-header p {
@@ -745,7 +749,8 @@ a {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
+  font-variation-settings: "wght" 800, "opsz" 24;
   flex: 1;
 }
 
