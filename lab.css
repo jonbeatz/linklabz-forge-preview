@@ -191,22 +191,22 @@ body.lab-on .project-strip.lab-replaced {
 }
 
 .facet-main {
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
+  padding: 0 12px;
+  border-radius: 9px;
+  white-space: nowrap;
 }
 
 .facet.has-value .facet-main {
   border-color: var(--hairline-strong);
   color: var(--gold);
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-radius: 9px 0 0 9px;
   padding-right: 8px;
 }
 
 .facet-clear {
   border-left: none;
   padding: 0 10px;
-  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  border-radius: 0 9px 9px 0;
   color: var(--amber);
   font-weight: 700;
 }
@@ -329,10 +329,11 @@ body.lab-on .project-strip.lab-replaced {
   align-items: center;
   gap: 4px;
   padding: 2px 4px 2px 8px;
-  border-radius: var(--radius-pill);
+  border-radius: 9px;
   background: rgba(245, 193, 92, 0.16);
   color: var(--gold);
   font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .combo-chip button {
@@ -1011,6 +1012,28 @@ body.lab-on .project-strip.lab-replaced {
 
   .toast-host {
     bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .lab-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    max-width: 100%;
+    align-items: center;
+  }
+  .lab-filters::-webkit-scrollbar { display: none; }
+  .lab-filters > * { flex: 0 0 auto; }
+  .lab-filters .combo {
+    flex: 0 0 auto;
+    min-width: 168px;
+    max-width: 240px;
+  }
+
+  .tabbar {
+    top: auto;
+    width: auto;
+    max-height: 72px;
   }
 
   .lab-mega { width: 100%; overflow-x: auto; }

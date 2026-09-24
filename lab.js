@@ -117,6 +117,26 @@
     window.addEventListener("resize", () => {
       placePillBlob();
       placeTabBlob();
+      syncChipFades();
+    });
+    document.addEventListener("scroll", (e) => {
+      const row = e.target;
+      if (!row || !row.classList) return;
+      if (row.matches(".project-strip, .todo-filter-strip, .todo-project-strip, .filter-bar, .lab-filters")) {
+        syncChipFades();
+      }
+    }, true);
+  }
+
+  function syncChipFades() {
+    document.querySelectorAll(".project-strip, .todo-filter-strip, .todo-project-strip, .filter-bar, .lab-filters").forEach((el) => {
+      if (el.hidden || getComputedStyle(el).display === "none") {
+        el.classList.remove("edge-fade");
+        return;
+      }
+      const overflow = el.scrollWidth > el.clientWidth + 4;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+      el.classList.toggle("edge-fade", overflow && !atEnd);
     });
   }
 
@@ -176,9 +196,11 @@
 
     placePillBlob();
     placeTabBlob();
+    syncChipFades();
     requestAnimationFrame(() => {
       placePillBlob();
       placeTabBlob();
+      syncChipFades();
     });
   }
 

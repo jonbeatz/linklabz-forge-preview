@@ -623,11 +623,17 @@ a {
 }
 
 .chip {
-  padding: 7px 12px;
-  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
   border: 1px solid var(--hairline);
   color: var(--text-muted);
   font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: nowrap;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
@@ -711,6 +717,7 @@ a {
 .project-strip {
   display: flex;
   flex-wrap: nowrap;
+  align-items: center;
   gap: 6px;
   padding: 2px;
   overflow-x: auto;
@@ -719,13 +726,19 @@ a {
   overscroll-behavior-x: contain;
 }
 .project-strip::-webkit-scrollbar { display: none; }
-.project-chip { flex-shrink: 0; min-height: 36px; }
+.project-strip > * { flex: 0 0 auto; }
 
 .project-chip {
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
   border: 1px solid var(--hairline);
   font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
   color: var(--text-muted);
   background: transparent;
   transition: all 0.2s var(--ease-out);
@@ -1116,7 +1129,25 @@ a {
 
 /* Shelf views */
 .shelf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   margin-bottom: 12px;
+}
+
+.shelf-toolbar .btn-gold,
+.empty-state .btn-gold {
+  width: auto;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .shelf {
@@ -2293,9 +2324,10 @@ a {
     font-size: 16px;
   }
 
-  .btn-tool .btn-label,
-  .btn-gold .btn-label { display: none; }
-  .btn-tool, .btn-gold {
+  .island-tools .btn-tool .btn-label,
+  .island-tools .btn-gold .btn-label { display: none; }
+  .island-tools .btn-tool,
+  .island-tools .btn-gold {
     width: 40px;
     height: 40px;
     min-width: 40px;
@@ -2304,8 +2336,8 @@ a {
     place-items: center;
     border-radius: 12px;
   }
-  .btn-gold { border-radius: var(--radius-pill); }
-  .btn-gold .btn-ico { font-size: 1.15rem; font-weight: 700; }
+  .island-tools .btn-gold { border-radius: var(--radius-pill); }
+  .island-tools .btn-gold .btn-ico { font-size: 1.15rem; font-weight: 700; }
 
   .kbd-chip,
   .help-toggle {
@@ -2405,10 +2437,33 @@ a {
   .canvas-header h2 { font-size: 1.45rem; }
   .meta-grid { grid-template-columns: 1fr; }
 
-  .filter-bar .chip,
-  .filter-bar .select,
-  .project-chip {
+  .filter-bar .select {
     min-height: 44px;
+  }
+
+  .filter-bar .chip,
+  .project-strip .chip,
+  .project-chip,
+  .todo-filter-strip .chip,
+  .todo-project-strip .chip {
+    min-height: 34px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 9px;
+  }
+
+  .shelf-toolbar .btn-gold {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .project-strip.edge-fade,
+  .todo-filter-strip.edge-fade,
+  .todo-project-strip.edge-fade,
+  .filter-bar.edge-fade,
+  .lab-filters.edge-fade {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   }
 
   .card:hover { transform: none; }
@@ -2468,6 +2523,8 @@ a {
 .todo-filter-strip,
 .todo-project-strip {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
